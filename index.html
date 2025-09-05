@@ -3,36 +3,43 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>如何被写进恐怖故事里 · 答题页 (p5.js)</title>
+  <title>如何被写进恐怖故事里 · 答题页 (p5.js + 摄像头故障)</title>
   <!-- p5.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
   <style>
+    :root { --red: #ff4d4d; --r2:#ff8080; }
     html, body { margin:0; padding:0; height:100%; background:#000; color:#ffdddd; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    /* 居中 UI 卡片 */
     #ui { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-    .card { pointer-events:auto; width:min(720px, 92vw); border:1px solid rgba(255,60,60,.45); background:rgba(0,0,0,.55); border-radius:18px; padding:20px 20px 16px; box-shadow:0 10px 40px rgba(255,0,0,.06); }
-    .title { font-size:20px; line-height:1.5; color:#ffefef; margin-bottom:16px; }
+    .card { pointer-events:auto; width:min(760px, 92vw); border:1px solid rgba(255,60,60,.45); background:rgba(0,0,0,.55); border-radius:18px; padding:20px 20px 16px; box-shadow:0 10px 40px rgba(255,0,0,.06); backdrop-filter: blur(2px); }
+    .title { font-size:20px; line-height:1.6; color:#ffefef; margin-bottom:16px; }
     .row { display:grid; gap:10px; }
     .row.cols-2{ grid-template-columns: 1fr 1fr;}
-    .btn { background:rgba(0,0,0,.55); color:#ffd6d6; border:1px solid rgba(255,80,80,.5); border-radius:12px; padding:10px 12px; text-align:left; cursor:pointer; }
-    .btn:hover { border-color:#ff8080; color:#fff; background:rgba(0,0,0,.45); }
+    .btn { background:rgba(0,0,0,.55); color:#ffd6d6; border:1px solid rgba(255,80,80,.5); border-radius:12px; padding:10px 12px; text-align:left; cursor:pointer; transition: .15s ease; }
+    .btn:hover { border-color:var(--r2); color:#fff; background:rgba(0,0,0,.45); transform: translateY(-1px); }
     .input { width:100%; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,80,80,.5); border-radius:12px; padding:10px 12px; outline:none; }
-    .footer { opacity:.6; margin-top:10px; font-size:12px; }
     .progress { height:6px; width:100%; background:#171717; border-radius:999px; overflow:hidden; margin:0 0 8px; }
-    .bar { height:100%; background:#ff4d4d; width:0%; transition: width .3s ease; }
-    .corner-note{ position:fixed; left:12px; bottom:10px; font-size:12px; opacity:.55; }
+    .bar { height:100%; background:var(--red); width:0%; transition: width .25s ease; }
+    /* 摄像头画面在 <canvas>，此处仅给全屏容器 */
+    #sketch-holder { position: fixed; inset: 0; z-index: 0; }
+    /* UI 层在上 */
+    #ui { z-index: 2; }
+    /* 可选：暗角，强化可读性 */
+    .vignette { position:fixed; inset:0; pointer-events:none; z-index:1; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,.45) 100%); }
   </style>
 </head>
 <body>
+  <div id="sketch-holder"></div>
+  <div class="vignette"></div>
   <main id="ui">
     <div class="card">
       <div class="progress"><div class="bar" id="bar"></div></div>
       <div class="title" id="title">请在下方输入你的名字：</div>
       <div class="row" id="content"></div>
-      <div class="footer" id="footer">累计题数 / 目标 13：<span id="count">0</span> / 13</div>
+      <div class="footer" id="footer" style="opacity:.6; margin-top:10px; font-size:12px;">累计题数 / 目标 13：<span id="count">0</span> / 13</div>
     </div>
   </main>
-  <div class="corner-note">p5.js 摄像头背景 + A/B/C/D 流程 • Esc 随机闪烁故障</div>
 
 <script>
 // ================= 配置区（题目占位，按需替换） =====================
@@ -136,7 +143,9 @@ const D_QUESTIONS = [
 let stage = 'intro'; // intro | A | C1 | B | D | done
 let nameValue = '';
 let video;
-let glitch = { on:false, t:0 };
+let pg;            // 离屏图层，用于故障处理
+let glitch = { active:false, t:0, amp:22, slices:22 };
+let microGlitchTick = 0; // 轻微随机抖动
 
 // A 段流程状态
 let aIndex = 0;                // 进行到第几个 A
@@ -160,14 +169,18 @@ let contentDiv, titleDiv, footerCountDiv, barDiv;
 let activeButtons = [];        // 当前屏幕上生成的按钮引用
 let inputEl, startBtn;         // intro 用
 
-// ================ p5 生命周期 =================
 function setup(){
-  createCanvas(window.innerWidth, window.innerHeight);
+  const holder = document.getElementById('sketch-holder');
+  const c = createCanvas(window.innerWidth, window.innerHeight);
+  c.parent(holder);
   pixelDensity(1);
+
+  // 离屏缓冲
+  pg = createGraphics(width, height);
 
   // 摄像头
   video = createCapture({ video:true, audio:false });
-  video.size(320, 240);
+  video.size(640, 480);
   video.hide();
 
   // 绑定 UI 容器
@@ -176,54 +189,69 @@ function setup(){
   footerCountDiv = select('#count');
   barDiv = select('#bar');
 
-  // Intro 画 UI
   renderIntro();
 }
 
 function windowResized(){
   resizeCanvas(window.innerWidth, window.innerHeight);
+  pg = createGraphics(width, height);
 }
 
 function draw(){
-  // 背景：摄像头 → 模拟 ASCII / Mosaic（轻量渲染）
-  background(0);
-  push();
-  translate(width, 0); // 镜像
-  scale(-1, 1);
-  const w = width, h = height;
-  // 拉伸画面：保留比例铺满
+  // --- 把摄像头画到离屏 pg（镜像 + cover 填充） ---
+  pg.push();
+  pg.clear();
+  pg.translate(pg.width, 0); // 镜像
+  pg.scale(-1, 1);
+  const w = pg.width, h = pg.height;
   const vw = video.width, vh = video.height;
   const scaleFit = max(w/vw, h/vh);
   const dw = vw*scaleFit, dh = vh*scaleFit;
-  image(video, (w-dw)/2, (h-dh)/2, dw, dh);
-  pop();
+  pg.image(video, (w-dw)/2, (h-dh)/2, dw, dh);
+  pg.pop();
 
-  // 故障层（按 Esc 触发短暂闪烁）
-  if (glitch.on){
-    noFill();
-    stroke(255, 60, 60, 160);
-    strokeWeight(12);
-    rect(20, 20, width-40, height-40);
-    strokeWeight(2);
-    for(let i=0;i<10;i++){
-      const x1 = random(width), x2 = random(width);
-      const y = random(height);
-      line(x1, y, x2, y + random(-8,8));
-    }
+  // --- 故障：微弱常驻 + 强闪（按 Esc） ---
+  if (glitch.active){
+    applyGlitch(pg, glitch.amp, glitch.slices);
     glitch.t--;
-    if (glitch.t <= 0) glitch.on = false;
+    if (glitch.t <= 0) glitch.active = false;
+  } else {
+    // 微弱抖动：每 60 帧触发一次小幅错位
+    microGlitchTick = (microGlitchTick + 1) % 60;
+    if (microGlitchTick === 0) applyGlitch(pg, 6, 8);
   }
+
+  // --- 叠加到主画布 ---
+  image(pg, 0, 0, width, height);
 }
 
 function keyPressed(){
   if (keyCode === ESCAPE){
-    glitch.on = true; glitch.t = 12; // 轻微闪烁
+    glitch.active = true; glitch.t = 12; // 约 0.2 秒
   }
 }
 
-// =============== 渲染与事件 ===============
+// =============== 故障算法：切片横向错位 + 轻微色偏 ===============
+function applyGlitch(g, amp=18, slices=16){
+  // 横向切片平移
+  for (let i=0;i<slices;i++){
+    const sh = int(random(4, 24));   // 切片高度
+    const y  = int(random(0, g.height - sh));
+    const dx = int(random(-amp, amp));
+    // 将这条横条向左/右平移
+    copy(g, 0, y, g.width, sh, dx, y, g.width, sh);
+  }
+  // 伪色偏（RGB 轻微错位）
+  const offset = int(random(-amp/4, amp/4));
+  blendMode(ADD);
+  tint(255, 50, 50, 45); image(g, offset, 0); // R
+  tint(50, 255, 50, 45); image(g, -offset, 0); // G
+  tint(50, 50, 255, 45); image(g, 0, offset/2); // B
+  noTint(); blendMode(BLEND);
+}
+
+// =============== 渲染与事件（问卷 UI） ===============
 function clearUI(){
-  // 清除所有动态按钮与输入框
   activeButtons.forEach(b => b.remove());
   activeButtons = [];
   if (inputEl) { inputEl.remove(); inputEl = null; }
@@ -248,6 +276,9 @@ function renderIntro(){
   titleDiv.html('请在下方输入你的名字：');
   clearUI();
 
+  contentDiv.elt.classList.remove('cols-2');
+  contentDiv.elt.classList.add('row','cols-2');
+
   inputEl = createInput('');
   inputEl.addClass('input');
   inputEl.parent(contentDiv);
@@ -255,10 +286,7 @@ function renderIntro(){
   startBtn = createButton('开始答题');
   startBtn.addClass('btn');
   startBtn.parent(contentDiv);
-
-  // 布局：两列
-  contentDiv.elt.classList.add('cols-2');
-  contentDiv.elt.classList.add('row');
+  activeButtons.push(startBtn);
 
   startBtn.mousePressed(()=>{
     const v = inputEl.value().trim();
@@ -281,27 +309,21 @@ function goA(){
 
 function renderA(){
   const q = A_QUESTIONS[aIndex];
-  if (!q){
-    // A 主问题全部走完且都为“否” → C1
-    return goC1();
-  }
+  if (!q){ return goC1(); }
 
   if (!pendingAAnchor && pendingASuppIndex === -1){
-    // 主问题
     titleDiv.html(q.main);
     renderOptions([
       {label:YES, on:()=> onAMain(q, YES)},
       {label:NO,  on:()=> onAMain(q, NO)},
     ], 2);
   } else if (pendingAAnchor && pendingASuppIndex === -1){
-    // 锚点 AA
     titleDiv.html(q.anchor);
     renderOptions([
       {label:YES, on:()=> onAAnchor(q, YES)},
       {label:NO,  on:()=> onAAnchor(q, NO)},
     ], 2);
   } else if (pendingASuppIndex > -1){
-    // 补充题 a/b/c
     const s = q.supplements[pendingASuppIndex];
     titleDiv.html(s.text);
     renderOptions(s.options.map(opt=>({label:opt, on:()=> onASupp(q, s, opt)})), 1);
@@ -311,44 +333,21 @@ function renderA(){
 function onAMain(q, ans){
   recordAnswer(q.id, ans);
   if (ans === YES){
-    pendingAAnchor = true; // 进入 AA
-    clearUI();
-    renderA();
-  } else {
-    // 主问题 = 否 → 下一个 A
-    aIndex++;
-    clearUI();
-    renderA();
-  }
+    pendingAAnchor = true; clearUI(); renderA();
+  } else { aIndex++; clearUI(); renderA(); }
 }
 
 function onAAnchor(q, ans){
   recordAnswer(q.anchorId, ans);
-  if (ans === YES){
-    identityCount++;
-    pendingAAnchor = false;
-    pendingASuppIndex = 0; // 进入 a
-    clearUI();
-    renderA();
-  } else {
-    // 锚点 = 否 → 下一个 A 主问题
-    pendingAAnchor = false;
-    aIndex++;
-    clearUI();
-    renderA();
-  }
+  if (ans === YES){ identityCount++; pendingAAnchor = false; pendingASuppIndex = 0; clearUI(); renderA(); }
+  else { pendingAAnchor = false; aIndex++; clearUI(); renderA(); }
 }
 
 function onASupp(q, s, choice){
   recordAnswer(s.id, choice);
   pendingASuppIndex++;
-  if (pendingASuppIndex >= q.supplements.length){
-    // a/b/c 完成 → A 段结束（已确认 ≥1 身份原型）→ B
-    pendingASuppIndex = -1;
-    return goB();
-  }
-  clearUI();
-  renderA();
+  if (pendingASuppIndex >= q.supplements.length){ pendingASuppIndex = -1; return goB(); }
+  clearUI(); renderA();
 }
 
 // ---------- C1（仅当 A 主问题全否） ----------
@@ -360,28 +359,18 @@ function goC1(){
 }
 
 // ---------- B 段 ----------
-function goB(){
-  stage = 'B';
-  clearUI();
-  pendingBSuppIndex = -1;
-  renderB();
-}
+function goB(){ stage = 'B'; clearUI(); pendingBSuppIndex = -1; renderB(); }
 
 function renderB(){
   const q = B_QUESTIONS[bIndex];
-  if (!q){
-    // B 走完但未确认任何焦虑原型 → 问题数检验
-    return questionCountCheck();
-  }
+  if (!q){ return questionCountCheck(); }
   if (pendingBSuppIndex === -1){
-    // 主问题
     titleDiv.html(q.main);
     renderOptions([
       {label:YES, on:()=> onBMain(q, YES)},
       {label:NO,  on:()=> onBMain(q, NO)},
     ], 2);
   } else {
-    // 补充 a/b/c
     const s = q.supplements[pendingBSuppIndex];
     titleDiv.html(s.text);
     renderOptions(s.options.map(opt=>({label:opt, on:()=> onBSupp(q, s, opt)})), 1);
@@ -390,62 +379,35 @@ function renderB(){
 
 function onBMain(q, ans){
   recordAnswer(q.id, ans);
-  if (ans === YES){
-    pendingBSuppIndex = 0;
-  } else {
-    bIndex++;
-  }
-  clearUI();
-  renderB();
+  if (ans === YES){ pendingBSuppIndex = 0; } else { bIndex++; }
+  clearUI(); renderB();
 }
 
 function onBSupp(q, s, choice){
   recordAnswer(s.id, choice);
   pendingBSuppIndex++;
-  if (pendingBSuppIndex >= q.supplements.length){
-    // 确认 1 个焦虑原型
-    anxietyCount++;
-    pendingBSuppIndex = -1;
-    questionCountCheck();
-  } else {
-    clearUI();
-    renderB();
-  }
+  if (pendingBSuppIndex >= q.supplements.length){ anxietyCount++; pendingBSuppIndex = -1; questionCountCheck(); }
+  else { clearUI(); renderB(); }
 }
 
 // ---------- D 段：补足到 13 ----------
 let dIndex = 0;
-function questionCountCheck(){
-  if (totalAsked >= 13){
-    return goDone();
-  }
-  goD();
-}
+function questionCountCheck(){ if (totalAsked >= 13){ return goDone(); } goD(); }
 
 function goD(){
-  stage = 'D';
-  clearUI();
+  stage = 'D'; clearUI();
   const dq = D_QUESTIONS[dIndex % D_QUESTIONS.length];
   titleDiv.html(dq.text);
-  renderOptions(dq.options.map(opt=>({label:opt, on:()=>{
-    recordAnswer(dq.id, opt);
-    dIndex++;
-    if (totalAsked >= 13) goDone();
-    else goD();
-  }})), 1);
+  renderOptions(dq.options.map(opt=>({label:opt, on:()=>{ recordAnswer(dq.id, opt); dIndex++; if (totalAsked >= 13) goDone(); else goD(); }})), 1);
 }
 
 // ---------- 结束 ----------
 function goDone(){
-  stage = 'done';
-  clearUI();
+  stage = 'done'; clearUI();
   titleDiv.html((nameValue || '参与者') + '，谢谢你的回答。');
   const btn = createButton('生成故事');
-  btn.addClass('btn');
-  btn.parent(contentDiv);
-  activeButtons.push(btn);
+  btn.addClass('btn'); btn.parent(contentDiv); activeButtons.push(btn);
   btn.mousePressed(()=>{
-    // 将数据传给你的故事页（可改为 window.postMessage / localStorage / 跳转）
     console.log('完成问卷：', { name:nameValue, answers, identityCount, anxietyCount, totalAsked });
     alert('已收集到 13 题答案，下一步进入故事生成页。\n(打开控制台可查看结构化数据)');
   });
@@ -457,14 +419,7 @@ function renderOptions(list, cols){
   contentDiv.elt.classList.remove('cols-2');
   contentDiv.elt.classList.add('row');
   if (cols === 2) contentDiv.elt.classList.add('cols-2'); else contentDiv.elt.classList.remove('cols-2');
-
-  list.forEach(({label, on})=>{
-    const b = createButton(label);
-    b.addClass('btn');
-    b.parent(contentDiv);
-    b.mousePressed(()=>{ on && on(); });
-    activeButtons.push(b);
-  });
+  list.forEach(({label, on})=>{ const b = createButton(label); b.addClass('btn'); b.parent(contentDiv); b.mousePressed(()=>{ on && on(); }); activeButtons.push(b); });
   setBar();
 }
 </script>
