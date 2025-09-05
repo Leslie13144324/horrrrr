@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>如何被写进恐怖故事里 · 结果页</title>
+  <style>
+    :root { --red:#e11919; --ink:#f7f7f7; }
+    html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;}
+    .wrap{min-height:100%;display:grid;place-items:center;padding:40px 16px;}
+    .card{max-width:980px;width:min(92vw,980px);background:rgba(0,0,0,.55);border:1px solid rgba(255,80,80,.5);border-radius:18px;box-shadow:0 10px 40px rgba(255,0,0,.12);backdrop-filter: blur(2px);}
+    .hd{padding:16px 18px;border-bottom:1px dashed rgba(255,80,80,.35);display:flex;justify-content:space-between;align-items:center}
+    .who{font-size:16px;opacity:.9}
+    .tag{padding:4px 10px;border:1px solid rgba(255,80,80,.6);border-radius:999px;color:#ffdada;background:rgba(0,0,0,.35);font-size:12px}
+    .story{padding:22px 22px 26px;line-height:1.75;font-size:18px;}
+    .ribbon{display:inline;box-decoration-break: clone;-webkit-box-decoration-break: clone;background:rgba(210,20,20,.9);color:#fff;border-radius:10px;padding:2px 8px;margin:0 2px;}
+    .meta{padding:0 22px 20px;color:#ffdfdf80;font-size:13px}
+    .btns{display:flex;gap:10px;padding:0 22px 24px}
+    .btn{cursor:pointer;border-radius:12px;border:1px solid rgba(255,80,80,.6);background:rgba(0,0,0,.55);color:#ffd6d6;padding:10px 14px}
+    .btn:hover{border-color:#ff9b9b;color:#fff}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <article class="card">
+      <header class="hd">
+        <div class="who" id="who">参与者</div>
+        <div class="tag" id="tag">—</div>
+      </header>
+      <section class="story" id="story">（正在生成故事……）</section>
+      <div class="meta" id="meta"></div>
+      <div class="btns">
+        <button class="btn" onclick="window.location.href='index.html'">返回重新作答</button>
+        <button class="btn" id="saveBtn">保存为图片</button>
+      </div>
+    </article>
+  </div>
+
+  <script>
+  // —— 读取问卷结果 ——
+  const payload = (()=>{ try { return JSON.parse(localStorage.getItem('quizPayload')||'{}'); } catch(e){ return {}; } })();
+  const name = payload.name || '参与者';
+  const A = {}; const B = {}; const C = {};
+  const ans = payload.answers || {};
+
+  // —— 从答案里提取命中的原型 ——
+  // A：找出第一个 AAx === '是' 的 A 编号（A1..A6），并取 a/b/c 特征
+  let aHit = null; // e.g., 'A1'
+  for(let i=1;i<=6;i++){
+    const AA = ans['AA'+i];
+    if(AA === '是') { aHit = 'A'+i; break; }
+  }
+  if(aHit){
+    A.id = aHit; A.type = 'identity';
+    A.a = ans[aHit+'a']; A.b = ans[aHit+'b']; A.c = ans[aHit+'c'];
+  }
+
+  // B：找出第一个 Bx === '是' 且回答了 a/b/c 的编号
+  let bHit = null;
+  for(let i=1;i<=6;i++){
+    if(ans['B'+i] === '是') { bHit = 'B'+i; break; }
+  }
+  if(bHit){
+    B.id = bHit; B.type = 'anxiety';
+    B.a = ans[bHit+'a']; B.b = ans[bHit+'b']; B.c = ans[bHit+'c'];
+  }
+
+  // C：若 A 主问题全否才会有 C1，这里只记录选项
+  if(ans['C1']){ C.id = 'C1'; C.choice = ans['C1']; }
+
+  // —— 选择故事键（优先级：若 B 和 C 同时存在 → 用 B；否则 A 优先，其次 B，其次 C） ——
+  let key = null, label = '';
+  if(B.id && C.id){ key = B.id; label = '焦虑原型 '+B.id; }
+  else if(aHit){ key = A.id; label = '身份原型 '+A.id; }
+  else if(B.id){ key = B.id; label = '焦虑原型 '+B.id; }
+  else if(C.id){ key = C.id; label = '伪归类 '+C.id; }
+
+  // —— 故事模板：请把 15 篇中文故事填到下方（占位） ——
+  const T = {
+    // A 类示例：把 [A1a特征] / [A1b特征] / [A1c特征] 替换为对应补充答案
+    A1: `她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。\n领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。\n有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，[A1a特征]，[A1c特征]。\n她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。[A1b特征]。\n有天晚上我们加班，办公室只剩我和她。我走过去想问她要不要一起走，结果看到她正在镜子前低头调整什么。不是妆容，不是衣领——是脸。\n她把脸从脸上慢慢剥下来，从额头撕开，再一寸一寸地卷到下巴。里面是空的。只有白白的塑料架子，像模特头。\n她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`,
+
+    A2: ``,
+    A3: ``,
+    A4: ``,
+    A5: ``,
+    A6: ``,
+
+    // B 类故事（会用 [Bxa] / [Bxb] / [Bxc] 替换）
+    B1: ``,
+    B2: ``,
+    B3: ``,
+    B4: ``,
+    B5: ``,
+    B6: ``,
+
+    // C 类故事（示例：用 [C1选项] 占位）
+    C1: ``
+  };
+
+  // —— 根据 key 与补充项进行占位替换 ——
+  function renderStory(){
+    const who = document.getElementById('who');
+    const tag = document.getElementById('tag');
+    const storyBox = document.getElementById('story');
+    const meta = document.getElementById('meta');
+
+    who.textContent = `${name} · 你的故事`;
+    tag.textContent = label || '未归类';
+
+    if(!key || !T[key]){
+      storyBox.textContent = '（没有找到可用的故事模板。请返回上一页重新作答，或联系作者补充 15 篇故事文本。）';
+      meta.textContent = '';
+      return;
+    }
+
+    let txt = T[key];
+
+    if(key.startsWith('A')){
+      // 将 [Axa特征] 占位替换成答案
+      txt = txt
+        .replaceAll(`[${key}a特征]`, A.a||'')
+        .replaceAll(`[${key}b特征]`, A.b||'')
+        .replaceAll(`[${key}c特征]`, A.c||'');
+    } else if(key.startsWith('B')){
+      txt = txt
+        .replaceAll(`[${key}a]`, B.a||'')
+        .replaceAll(`[${key}b]`, B.b||'')
+        .replaceAll(`[${key}c]`, B.c||'');
+    } else if(key === 'C1'){
+      txt = (T[key]||'').replaceAll('[C1选项]', C.choice||'');
+    }
+
+    // 渲染，带“红丝带”高亮方括号段
+    storyBox.innerHTML = decorate(txt);
+
+    // 元信息
+    const answered = payload.totalAsked!=null ? payload.totalAsked : Object.keys(ans).length;
+    const ids = Object.keys(ans).join(' · ');
+    meta.textContent = `已答题：${answered} 题｜身份原型：${A.id||'—'}｜焦虑原型：${B.id||'—'}｜C1：${C.choice||'—'}`;
+  }
+
+  // 将中括号内容包一个“丝带” span（视觉更像海报标题）
+  function decorate(s){
+    return s
+      .replace(/\n/g, '<br/>')
+      .replace(/\[(.*?)\]/g, (m,p1)=> `<span class="ribbon">${p1}</span>`);
+  }
+
+  renderStory();
+
+  // —— 保存为图片（简单用 html2canvas 的无依赖方案：使用 CSS Paint? 为简洁起见，这里用浏览器内置截图快捷键即可。占位按钮可自定义逻辑。） ——
+  document.getElementById('saveBtn').addEventListener('click', ()=>{
+    alert('提示：按系统截图快捷键保存当前海报。若需要自动导出图片/海报 PDF，我可以再给你加上 html2canvas/Canvas 导出版本。');
+  });
+  </script>
+</body>
+</html>
