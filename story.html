@@ -1,65 +1,50 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>如何被写进恐怖故事里 · 结果页</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
-  <style>
-    html, body { margin:0; padding:0; height:100%; background:#000; color:#ffecec;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      overflow:hidden; /* 禁止页面滚动，画布始终全屏 */
-    }
-    canvas { display:block; }
-  </style>
-</head>
-<body>
-<script>
-/*==================== 读取答题结果 → 选故事键 ====================*/
-const payload = (()=>{ try { return JSON.parse(localStorage.getItem('quizPayload')||'{}'); } catch(e){ return {}; } })();
-const nameValue = payload.name || '参与者';
-const ans = payload.answers || {};
+// —— 自动适配：根据可用高度缩小段落字号 ——
+//（只替换这个函数）
+function autosizeParagraphs(){
+  const wrapW = rightRect.w * WRAP_WIDTH_RATIO;
 
-let aHit=null; for(let i=1;i<=6;i++){ if(ans['AA'+i]==='是'){ aHit='A'+i; break; } }
-let bHit=null; for(let i=1;i<=6;i++){ if(ans['B'+i]==='是'){ bHit='B'+i; break; } }
-const cHit = ans['C1'] ? 'C1' : null;
+  // 用 window.textSize / window.textWidth 防止命名遮蔽
+  window.textSize(WOMAN_SIZE);
+  const womanLines = wrapLines(WOMAN_TEXT, wrapW, WOMAN_SIZE);
 
-let storyKey=null, storyLabel='';
-if(bHit && cHit){ storyKey=bHit; storyLabel='焦虑原型 '+bHit; }
-else if(aHit){ storyKey=aHit; storyLabel='身份原型 '+aHit; }
-else if(bHit){ storyKey=bHit; storyLabel='焦虑原型 '+bHit; }
-else if(cHit){ storyKey=cHit; storyLabel='伪归类 C1'; }
+  window.textSize(PARA_SIZE);
+  let paraLines = paragraphs.map(p => wrapLines(p, wrapW, PARA_SIZE));
 
-/*==================== 故事模板（先留空，A1示例） ====================*/
-const T = {
-  A1: `她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。
-领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。
-有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，[A1a特征]，[A1c特征]。
-她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。[A1b特征]。
-有天晚上我们加班，办公室只剩我和她。我走过去想问她要不要一起走，结果看到她正在镜子前低头调整什么。不是妆容，不是衣领——是脸。
-她把脸从脸上慢慢剥下来，从额头撕开，再一寸一寸地卷到下巴。里面是空的。只有白白的塑料架子，像模特头。
-她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`,
-  A2:``,A3:``,A4:``,A5:``,A6:``,
-  B1:``,B2:``,B3:``,B4:``,B5:``,B6:``,
-  C1:``
-};
+  const estimateRightHeight = (wl, pl) => {
+    const titleBoxH = WOMAN_SIZE + PARA_PAD_Y*2;
+    const paraBoxH  = PARA_SIZE  + PARA_PAD_Y*2;
+    return wl.length*titleBoxH + PARA_GAP*1.2 +
+           pl.reduce((s,ls)=> s + ls.length*paraBoxH + PARA_GAP, 0);
+  };
 
-function buildStoryParagraphs(){
-  let key=storyKey; if(!key || !T[key]) return ['（没有找到对应故事模板，请补充 15 篇文本或返回重试）'];
-  let txt=T[key];
-  if(key.startsWith('A')){
-    txt = txt.replaceAll(`[${key}a特征]`, ans[key+'a']||'')
-             .replaceAll(`[${key}b特征]`, ans[key+'b']||'')
-             .replaceAll(`[${key}c特征]`, ans[key+'c']||'');
-  } else if(key.startsWith('B')){
-    txt = txt.replaceAll(`[${key}a]`, ans[key+'a']||'')
-             .replaceAll(`[${key}b]`, ans[key+'b']||'')
-             .replaceAll(`[${key}c]`, ans[key+'c']||'');
-  } else if(key==='C1'){
-    txt = (T[key]||'').replaceAll('[C1选项]', ans['C1']||'');
+  let h = estimateRightHeight(womanLines, paraLines);
+  while (h > rightRect.h && PARA_SIZE > 12){
+    PARA_SIZE -= 1;
+    window.textSize(PARA_SIZE);
+    paraLines = paragraphs.map(p => wrapLines(p, wrapW, PARA_SIZE));
+    h = estimateRightHeight(womanLines, paraLines);
   }
-  return txt.split('\n').map(s=>s.trim());
+  window.__womanLines = womanLines;
+  window.__paraLines  = paraLines;
+}
+
+// —— 文本换行 ——
+//（只替换这个函数）
+function wrapLines(textStr, maxW, fontSize){
+  const tokens = textStr.split(/(\s+)/);
+  let lines = [''];
+
+  window.textSize(fontSize);  // 显式调用全局 p5 API
+
+  for(const tk of tokens){
+    const trial = lines[lines.length-1] + tk;
+    if (window.textWidth(trial) <= maxW || lines[lines.length-1] === ''){
+      lines[lines.length-1] = trial;
+    } else {
+      lines.push(tk.trimStart());
+    }
+  }
+  return lines.map(s => s.replace(/\s+$/,''));
 }
 
 /*==================== 15 张故障图与故事键映射 ====================*/
