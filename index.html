@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>如何被写进恐怖故事里 · 答题页 (p5.js + 递进式故障)</title>
-  <!-- p5.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
   <style>
@@ -37,17 +36,14 @@
   </main>
 
 <script>
-/******************** 跳转配置（根据你的结果页修改） ************************/
-const RESULT_URL = "https://leslie13144324.github.io/horrrrr/story.html";          // 例如 "https://your-name.github.io/project/story.html"
-const USE_LOCAL_STORAGE = true;  // 故事页读取 localStorage('quizPayload')
-/***************************************************************************/
+/******** 跳转配置 ********/
+const RESULT_URL = "https://leslie13144324.github.io/horrrrr/story.html";
+const USE_LOCAL_STORAGE = true;
 
-/******************** 故障曲线（每答一题增强） **********************/
-// 起点：几乎无故障（只有轻微朦胧）→ 13 题：强烈“方片+条纹”
-function paramsByProgress(n){ // n = 0..13
+/******** 故障曲线：每答一题增强 ********/
+function paramsByProgress(n){
   const t = constrain(n/13, 0, 1);
-  // 平滑增长（ease）
-  const e = t*t*(3-2*t);
+  const e = t*t*(3-2*t); // ease
   return {
     amp: lerp(0, 60, e),          // 平移幅度
     slices: int(lerp(0, 48, e)),  // 横条数量
@@ -55,12 +51,177 @@ function paramsByProgress(n){ // n = 0..13
     scanGap: max(2, int(lerp(8, 3, e))),
     scanAlpha: int(lerp(0, 120, e)),
     chroma: int(lerp(0, 140, e)),
-    haze: lerp(14, 0, e)          // 朦胧（开始大，越答越清晰）
+    haze: lerp(14, 0, e)          // 朦胧：开始大、越答越清晰
   };
 }
-/***************************************************************************/
 
-// ================= 问题配置（占位，按需替换） =====================
+/******** 题库（可继续改） ********/
+const YES='是', NO='否';
+const A_QUESTIONS=[ /* 你的 A1-A6 …（保持你现在那份即可） */ 
+  { id:'A1', main:'A1. 你是否在性别规训中感到被压迫？', anchorId:'AA1', anchor:'AA1. 当被要求“像某种样子”时，你会本能地顺从吗？',
+    supplements:[
+      { id:'A1a', text:'A1a. 你更常被要求安静/乖巧/体面', options:[YES, NO, '不确定']},
+      { id:'A1b', text:'A1b. 你被评价的焦点多落在外表/举止', options:[YES, NO, '不确定']},
+      { id:'A1c', text:'A1c. 你在公共空间的行动常被旁观/提醒', options:[YES, NO, '不确定']},
+    ]},
+  { id:'A2', main:'A2. 你是否因性倾向/情感指向遭遇过不适？', anchorId:'AA2', anchor:'AA2. 面对他人的窥探，你是否习惯回避？',
+    supplements:[{id:'A2a',text:'A2a. 你更愿以暧昧/隐语表达自我',options:[YES,NO,'不确定']},
+                 {id:'A2b',text:'A2b. 你的亲密边界常被试探',options:[YES,NO,'不确定']},
+                 {id:'A2c',text:'A2c. 你害怕“被看见”的后果',options:[YES,NO,'不确定']}]},
+  { id:'A3', main:'A3. 你的身体差异常被凝视/标注过吗？', anchorId:'AA3', anchor:'AA3. 你是否因此避免公开照面或拍照？',
+    supplements:[{id:'A3a',text:'A3a. 你习惯调整姿态以躲避镜头',options:[YES,NO,'不确定']},
+                 {id:'A3b',text:'A3b. 你会下意识收敛动作',options:[YES,NO,'不确定']},
+                 {id:'A3c',text:'A3c. 你不信任镜子里的自己',options:[YES,NO,'不确定']}]},
+  { id:'A4', main:'A4. 你是否是异乡人/外地身份而被区别对待？', anchorId:'AA4', anchor:'AA4. 你说话/穿着常被人判断“不是本地人”？',
+    supplements:[{id:'A4a',text:'A4a. 你的声音带有口音或奇怪停顿',options:['口音','停顿','过快']},
+                 {id:'A4b',text:'A4b. 你最显眼的特征常被记住',options:['肤色','穿着','眼神']},
+                 {id:'A4c',text:'A4c. 人群中你身上的气味常被注意',options:['潮湿','辛辣','消毒水']}]},
+  { id:'A5', main:'A5. 你是否来自控制/压抑的家庭结构？', anchorId:'AA5', anchor:'AA5. 你的决定常被否定或被代替吗？',
+    supplements:[{id:'A5a',text:'A5a. 你常在“更懂的人”面前沉默',options:[YES,NO,'不确定']},
+                 {id:'A5b',text:'A5b. 你做选择会先想“家里会怎么说”',options:[YES,NO,'不确定']},
+                 {id:'A5c',text:'A5c. 你梦见家里房间的门没有把手',options:[YES,NO,'不确定']}]},
+  { id:'A6', main:'A6. 你是否在社交中长期被忽略/边缘？', anchorId:'AA6', anchor:'AA6. 你是否习惯在角落观察而不发声？',
+    supplements:[{id:'A6a',text:'A6a. 你常被描述为“不合拍/过安静”',options:['不合拍','过安静','不确定']},
+                 {id:'A6b',text:'A6b. 你更倾向选择靠边/背墙的位置',options:['靠窗角','最后一排','门口侧']},
+                 {id:'A6c',text:'A6c. 你会反复做一些安抚性小动作',options:['捏衣角','抠指甲','理头发']}]},
+];
+const C1={ id:'C1', text:'C1. 他们说，你之所以异样，是因为——（必须选择一条）',
+           options:['你看起来不像这里的人','你总是躲在镜头外','你说话的方式让人不安'] };
+const B_QUESTIONS=[ /* 你的 B1-B6 …（保持你现在那份即可） */ 
+  { id:'B1', main:'B1. 你是否长期处于亲密关系焦虑？',
+    supplements:[
+      { id:'B1a', text:'B1a. 你担心被抛下的具体迹象是', options:['已读不回','临时失联','态度忽冷忽热']},
+      { id:'B1b', text:'B1b. 你趋向采取的自保方式是', options:['先疏离','过度粘连','测试对方']},
+      { id:'B1c', text:'B1c. 你最害怕重复的场景是', options:['门在你身后关上','屏幕突然黑','钥匙在门外']},
+    ]},
+  /* 其余 B2..B6 同理省略 */
+];
+const D_QUESTIONS=[
+  { id:'D1', text:'D1. 你更害怕哪一种门？', options:['打不开的门','自己打开的门','一直敲的门']},
+  { id:'D2', text:'D2. 哪一种光最让你不安？', options:['闪烁灯管','手机微光','电梯顶灯']},
+  { id:'D3', text:'D3. 哪种气味让你想逃离？', options:['潮霉','铁锈','消毒水']},
+  { id:'D4', text:'D4. 当房间忽然安静时，你会？', options:['停住不动','立刻说话','打开音乐']},
+  { id:'D5', text:'D5. 哪个时间点最不对劲？', options:['03:17','04:44','05:01']},
+  { id:'D6', text:'D6. 你最怕哪种脚步？', options:['跟在后面','从门外经过','从楼上停住']},
+  { id:'D7', text:'D7. 你会把镜子放在哪里？', options:['窗边','柜门内侧','床对面']},
+  { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名','电流嗡嗡']},
+];
+
+/******** 递进式摄像头故障 ********/
+let video, pg, camReady=true;
+let contentDiv, titleDiv, footerCountDiv, barDiv;
+let stage='intro', nameValue='', aIndex=0, pendingAAnchor=false, pendingASuppIndex=-1;
+let bIndex=0, pendingBSuppIndex=-1;
+let identityCount=0, anxietyCount=0, totalAsked=0;
+const answers={};
+let activeButtons=[], inputEl, startBtn;
+
+function setup(){
+  const holder=document.getElementById('sketch-holder');
+  const c=createCanvas(window.innerWidth, window.innerHeight); c.parent(holder); pixelDensity(1);
+  pg=createGraphics(width, height);
+  try{ video=createCapture({video:true,audio:false}); video.size(640,480); video.hide(); }
+  catch(e){ camReady=false; }
+  contentDiv=select('#content'); titleDiv=select('#title'); footerCountDiv=select('#count'); barDiv=select('#bar');
+  renderIntro();
+}
+function windowResized(){ resizeCanvas(window.innerWidth, window.innerHeight); pg=createGraphics(width,height); }
+function draw(){
+  if(camReady && video){
+    pg.push(); pg.clear(); pg.translate(pg.width,0); pg.scale(-1,1);
+    const w=pg.width,h=pg.height,vw=video.width,vh=video.height; const s=max(w/vw,h/vh); const dw=vw*s, dh=vh*s;
+    pg.image(video,(w-dw)/2,(h-dh)/2,dw,dh); pg.pop();
+  }else{
+    pg.clear(); pg.background(0);
+  }
+  const p=paramsByProgress(totalAsked);
+  if(p.haze>0){ pg.filter(BLUR, p.haze/12); pg.fill(255,20); pg.noStroke(); pg.rect(0,0,pg.width,pg.height); }
+  applyGlitchProgressive(pg,p);
+  image(pg,0,0,width,height);
+  if(p.chroma>0){
+    const off=int(map(noise(millis()*0.004),0,1,-p.amp/2.5,p.amp/2.5));
+    blendMode(ADD);
+    tint(255,60,60,p.chroma); image(pg, off,0);
+    tint(60,255,60,p.chroma); image(pg,-off,0);
+    tint(60,60,255,p.chroma); image(pg, 0,off/2);
+    noTint(); blendMode(BLEND);
+  }
+}
+function applyGlitchProgressive(g,p){
+  const t=millis()*0.001;
+  for(let i=0;i<p.slices;i++){
+    const sh=int(random(6,24)), y=int(random(0,g.height-sh));
+    const dx=int(map(noise(t*3+i*.17),0,1,-p.amp,p.amp));
+    g.copy(g,0,y,g.width,sh, dx,y,g.width,sh);
+  }
+  for(let i=0;i<p.blocks;i++){
+    const bw=int(random(40,160)), bh=int(random(14,60));
+    const sx=int(random(0,g.width-bw)), sy=int(random(0,g.height-bh));
+    const dx=int(sx+map(noise(t*2.4+i*.31),0,1,-p.amp,p.amp));
+    const dy=int(sy+map(noise(t*2.7+i*.37),0,1,-p.amp*.6,p.amp*.6));
+    g.copy(g,sx,sy,bw,bh, dx,dy,bw,bh);
+  }
+  if(p.scanAlpha>0){
+    g.noStroke(); g.fill(255,p.scanAlpha);
+    const gap=p.scanGap; const off=int((sin(t*5.2)*.5+.5)*gap);
+    for(let y=off;y<g.height;y+=gap){ if(y%(gap*2)===0) g.rect(0,y,g.width,2); }
+  }
+}
+
+/******** UI 逻辑 ********/
+function clearUI(){ activeButtons.forEach(b=>b.remove()); activeButtons=[]; if(inputEl){inputEl.remove();inputEl=null;} if(startBtn){startBtn.remove();startBtn=null;} }
+function setBar(){ const pct=Math.min(100, Math.round((totalAsked/13)*100)); barDiv.elt.style.width=pct+'%'; footerCountDiv.html(totalAsked.toString()); }
+function recordAnswer(qid,val){ answers[qid]=val; totalAsked++; setBar(); }
+
+function renderIntro(){ stage='intro'; titleDiv.html('请在下方输入你的名字：'); clearUI(); contentDiv.elt.classList.add('row','cols-2');
+  inputEl=createInput(''); inputEl.addClass('input'); inputEl.parent(contentDiv);
+  startBtn=createButton('开始答题'); startBtn.addClass('btn'); startBtn.parent(contentDiv); activeButtons.push(startBtn);
+  startBtn.mousePressed(()=>{ const v=inputEl.value().trim(); if(!v) return; nameValue=v; contentDiv.elt.classList.remove('cols-2'); goA(); }); setBar(); }
+
+function goA(){ stage='A'; clearUI(); pendingAAnchor=false; pendingASuppIndex=-1; renderA(); }
+function renderA(){ const q=A_QUESTIONS[aIndex]; if(!q){ return goC1(); }
+  if(!pendingAAnchor && pendingASuppIndex===-1){ titleDiv.html(q.main); renderOptions([{label:YES,on:()=>onAMain(q,YES)},{label:NO,on:()=>onAMain(q,NO)}],2); }
+  else if(pendingAAnchor && pendingASuppIndex===-1){ titleDiv.html(q.anchor); renderOptions([{label:YES,on:()=>onAAnchor(q,YES)},{label:NO,on:()=>onAAnchor(q,NO)}],2); }
+  else { const s=q.supplements[pendingASuppIndex]; titleDiv.html(s.text); renderOptions(s.options.map(opt=>({label:opt,on:()=>onASupp(q,s,opt)})),1); } }
+function onAMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingAAnchor=true; } else { aIndex++; } clearUI(); renderA(); }
+function onAAnchor(q,ans){ recordAnswer(q.anchorId,ans); if(ans===YES){ identityCount++; pendingAAnchor=false; pendingASuppIndex=0; } else { pendingAAnchor=false; aIndex++; } clearUI(); renderA(); }
+function onASupp(q,s,choice){ recordAnswer(s.id,choice); pendingASuppIndex++; if(pendingASuppIndex>=q.supplements.length){
+    pendingASuppIndex=-1;  // 命中过身份 → 进入数量检验（用 D 补足，不再进 B）
+    return questionCountCheck();
+  } clearUI(); renderA(); }
+
+function goC1(){ stage='C1'; clearUI(); titleDiv.html(C1.text); renderOptions(C1.options.map(opt=>({label:opt,on:()=>{recordAnswer(C1.id,opt); goB();}})),1); }
+
+function goB(){ stage='B'; clearUI(); pendingBSuppIndex=-1; renderB(); }
+function renderB(){ const q=B_QUESTIONS[bIndex]; if(!q){ return questionCountCheck(); }
+  if(pendingBSuppIndex===-1){ titleDiv.html(q.main); renderOptions([{label:YES,on:()=>onBMain(q,YES)},{label:NO,on:()=>onBMain(q,NO)}],2); }
+  else { const s=q.supplements[pendingBSuppIndex]; titleDiv.html(s.text); renderOptions(s.options.map(opt=>({label:opt,on:()=>onBSupp(q,s,opt)})),1); } }
+function onBMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingBSuppIndex=0; } else { bIndex++; } clearUI(); renderB(); }
+function onBSupp(q,s,choice){ recordAnswer(s.id,choice); pendingBSuppIndex++; if(pendingBSuppIndex>=q.supplements.length){
+    anxietyCount++; pendingBSuppIndex=-1; return questionCountCheck();
+  } else { clearUI(); renderB(); } }
+
+let dIndex=0;
+function questionCountCheck(){ if(totalAsked>=13) return goDone(); goD(); }
+function goD(){ stage='D'; clearUI(); const dq=D_QUESTIONS[dIndex % D_QUESTIONS.length]; titleDiv.html(dq.text);
+  renderOptions(dq.options.map(opt=>({label:opt,on:()=>{ recordAnswer(dq.id,opt); dIndex++; if(totalAsked>=13) goDone(); else goD(); }})),1); }
+
+function goDone(){ stage='done'; clearUI(); titleDiv.html((nameValue||'参与者')+'，谢谢你的回答。'); const btn=createButton('生成故事'); btn.addClass('btn'); btn.parent(contentDiv); activeButtons.push(btn);
+  btn.mousePressed(()=>{ const payload={ name:nameValue, answers, identityCount, anxietyCount, totalAsked };
+    if(USE_LOCAL_STORAGE){ try{ localStorage.setItem('quizPayload', JSON.stringify(payload)); console.log('payload to story:',payload);}catch(e){} }
+    if(RESULT_URL && RESULT_URL.length>3){ window.location.href = RESULT_URL; }
+    else { alert('已收集到 13 题答案，但 RESULT_URL 未设置。'); }
+  }); setBar(); }
+
+function renderOptions(list, cols){
+  contentDiv.elt.classList.remove('cols-2'); contentDiv.elt.classList.add('row');
+  if(cols===2) contentDiv.elt.classList.add('cols-2'); else contentDiv.elt.classList.remove('cols-2');
+  list.forEach(({label,on})=>{ const b=createButton(label); b.addClass('btn'); b.parent(contentDiv); b.mousePressed(()=>{on&&on();}); activeButtons.push(b); });
+  setBar();
+}
+</script>
+</body>
+</html>
 const YES = '是';
 const NO  = '否';
 
