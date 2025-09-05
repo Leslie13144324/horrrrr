@@ -38,18 +38,18 @@
 
 <script>
 /******************** 跳转配置（根据你的结果页修改） ************************/
-const RESULT_URL = "";          // 例如 "https://your-name.github.io/project/story.html"
+const RESULT_URL = "https://68a92fb772ac69988402ad9d--effortless-muffin-585e6f.netlify.app/";          // 例如 "https://your-name.github.io/project/story.html"
 const USE_LOCAL_STORAGE = true;  // 故事页读取 localStorage('quizPayload')
 /***************************************************************************/
 
 /******************** 持续故障参数（可调） ************************/
-const GLITCH_BASE_AMP = 28;   // 基础位移幅度（越大越乱）
-const GLITCH_JITTER   = 22;   // 基于噪声的额外抖动幅度
-const GLITCH_SLICES   = 34;   // 横向切片数量
-const GLITCH_BLOCKS   = 14;   // 随机块错位数量
-const GLITCH_SCAN_GAP = 4;    // 扫描线行距（越小越密）
-const GLITCH_SCAN_STR = 70;   // 扫描线强度(0~255)
-const GLITCH_CHROMA   = 85;   // RGB 色偏强度(0~255)
+const GLITCH_BASE_AMP = 40;   // 基础位移幅度（越大越乱）
+const GLITCH_JITTER   = 28;   // 基于噪声的额外抖动幅度
+const GLITCH_SLICES   = 42;   // 横向切片数量
+const GLITCH_BLOCKS   = 20;   // 随机块错位数量
+const GLITCH_SCAN_GAP = 3;    // 扫描线行距（越小越密）
+const GLITCH_SCAN_STR = 110;  // 扫描线强度(0~255)
+const GLITCH_CHROMA   = 130;  // RGB 色偏强度(0~255)
 /***************************************************************************/
 
 // ================= 问题配置（占位，按需替换） =====================
@@ -168,11 +168,11 @@ function setup(){
 function windowResized(){ resizeCanvas(window.innerWidth, window.innerHeight); pg = createGraphics(width, height); }
 
 function draw(){
-  // 先把摄像头画到离屏 pg（镜像 + cover）
+  // 把摄像头画到离屏 pg（镜像 + cover）
   pg.push(); pg.clear(); pg.translate(pg.width, 0); pg.scale(-1, 1);
   const w=pg.width,h=pg.height,vw=video.width,vh=video.height; const s=max(w/vw,h/vh); const dw=vw*s, dh=vh*s; pg.image(video,(w-dw)/2,(h-dh)/2,dw,dh); pg.pop();
 
-  // 连续故障（每帧都有，随噪声起伏）
+  // 连续故障（每帧都有，随噪声起伏）—— 直接对 pg 动刀
   const t = millis() * 0.0008;
   const ampNoise = noise(t*1.7) * GLITCH_JITTER;       // 0 ~ JITTER
   const amp = GLITCH_BASE_AMP + ampNoise;              // 基础 + 抖动
@@ -180,16 +180,25 @@ function draw(){
   const blocks = GLITCH_BLOCKS + int(noise(t*1.3)*6 - 3);
   applyGlitch(pg, amp, slices, blocks, t);
 
+  // 先画被破坏的 pg
   image(pg, 0, 0, width, height);
+
+  // 再在主画布做 RGB 偏移叠加
+  const off = int(map(noise(t*4.3), 0, 1, -amp/2.5, amp/2.5));
+  blendMode(ADD);
+  tint(255,60,60, GLITCH_CHROMA); image(pg,  off, 0);
+  tint(60,255,60, GLITCH_CHROMA); image(pg, -off, 0);
+  tint(60,60,255, GLITCH_CHROMA); image(pg,   0, off/2);
+  noTint(); blendMode(BLEND);
 }
 
-// 连续故障：横向切片 + 块错位 + 动态扫描线 + 动态色偏
+// 连续故障：横向切片 + 块错位 + 动态扫描线（都直接写入 pg）
 function applyGlitch(g, amp, slices, blocks, t){
-  // 横向切片
+  // 横向切片错位
   for(let i=0;i<slices;i++){
     const sh=int(random(6, 24)); const y=int(random(0, g.height-sh));
     const n=noise(t*3 + i*0.17); const dx=int(map(n,0,1,-amp,amp));
-    copy(g, 0, y, g.width, sh, dx, y, g.width, sh);
+    g.copy(g, 0, y, g.width, sh, dx, y, g.width, sh);
   }
   // 随机块错位
   for(let i=0;i<blocks;i++){
@@ -197,18 +206,11 @@ function applyGlitch(g, amp, slices, blocks, t){
     const sx=int(random(0, g.width-bw)), sy=int(random(0, g.height-bh));
     const nx=noise(t*2.4 + i*0.31), ny=noise(t*2.7 + i*0.37);
     const dx=int(sx + map(nx,0,1,-amp,amp)), dy=int(sy + map(ny,0,1,-amp*0.6,amp*0.6));
-    copy(g, sx, sy, bw, bh, dx, dy, bw, bh);
+    g.copy(g, sx, sy, bw, bh, dx, dy, bw, bh);
   }
-  // 扫描线
-  noStroke(); const scanOffset=(sin(t*5.2)*0.5 + 0.5) * GLITCH_SCAN_GAP; fill(255, GLITCH_SCAN_STR);
-  for(let y=int(scanOffset); y<height; y+=GLITCH_SCAN_GAP){ if (y % (GLITCH_SCAN_GAP*2) === 0) rect(0,y,width,2); }
-  // RGB 色偏
-  const off=int(map(noise(t*4.3),0,1,-amp/2.5, amp/2.5));
-  blendMode(ADD);
-  tint(255,60,60, GLITCH_CHROMA); image(g,  off,0);   // R
-  tint(60,255,60, GLITCH_CHROMA); image(g, -off,0);   // G
-  tint(60,60,255, GLITCH_CHROMA); image(g,   0,off/2);// B
-  noTint(); blendMode(BLEND);
+  // 扫描线（画在 g 上，不会被覆盖）
+  g.noStroke(); const scanOffset=(sin(t*5.2)*0.5 + 0.5) * GLITCH_SCAN_GAP; g.fill(255, GLITCH_SCAN_STR);
+  for(let y=int(scanOffset); y<g.height; y+=GLITCH_SCAN_GAP){ if (y % (GLITCH_SCAN_GAP*2) === 0) g.rect(0,y,g.width,2); }
 }
 
 /******************** 问卷 UI 逻辑 ********************/
@@ -257,569 +259,6 @@ function goDone(){ stage='done'; clearUI(); titleDiv.html((nameValue||'参与者
   }); setBar(); }
 
 function renderOptions(list, cols){ contentDiv.elt.classList.remove('cols-2'); contentDiv.elt.classList.add('row'); if(cols===2) contentDiv.elt.classList.add('cols-2'); else contentDiv.elt.classList.remove('cols-2'); list.forEach(({label,on})=>{ const b=createButton(label); b.addClass('btn'); b.parent(contentDiv); b.mousePressed(()=>{on&&on();}); activeButtons.push(b); }); setBar(); }
-</script>
-</body>
-</html>
-      { id:'A2c', text:'A2c. 你害怕“被看见”的后果', options:[YES, NO, '不确定']},
-    ] },
-  { id:'A3', main:'A3. 你的身体差异常被凝视/标注过吗？', anchorId:'AA3', anchor:'AA3. 你是否因此避免公开照面或拍照？',
-    supplements:[
-      { id:'A3a', text:'A3a. 你习惯调整姿态以躲避镜头', options:[YES, NO, '不确定']},
-      { id:'A3b', text:'A3b. 你会下意识收敛动作', options:[YES, NO, '不确定']},
-      { id:'A3c', text:'A3c. 你不信任镜子里的自己', options:[YES, NO, '不确定']},
-    ] },
-  { id:'A4', main:'A4. 你是否是异乡人/外地身份而被区别对待？', anchorId:'AA4', anchor:'AA4. 你说话/穿着常被人判断“不是本地人”？',
-    supplements:[
-      { id:'A4a', text:'A4a. 你的声音带有口音或奇怪停顿', options:['口音','停顿','过快']},
-      { id:'A4b', text:'A4b. 你最显眼的特征常被记住', options:['肤色','穿着','眼神']},
-      { id:'A4c', text:'A4c. 人群中你身上的气味常被注意', options:['潮湿','辛辣','消毒水']},
-    ] },
-  { id:'A5', main:'A5. 你是否来自控制/压抑的家庭结构？', anchorId:'AA5', anchor:'AA5. 你的决定常被否定或被代替吗？',
-    supplements:[
-      { id:'A5a', text:'A5a. 你常在“更懂的人”面前沉默', options:[YES, NO, '不确定']},
-      { id:'A5b', text:'A5b. 你做选择会先想“家里会怎么说”', options:[YES, NO, '不确定']},
-      { id:'A5c', text:'A5c. 你梦见家里房间的门没有把手', options:[YES, NO, '不确定']},
-    ] },
-  { id:'A6', main:'A6. 你是否在社交中长期被忽略/边缘？', anchorId:'AA6', anchor:'AA6. 你是否习惯在角落观察而不发声？',
-    supplements:[
-      { id:'A6a', text:'A6a. 你常被描述为“不合拍/过安静”', options:['不合拍','过安静','不确定']},
-      { id:'A6b', text:'A6b. 你更倾向选择靠边/背墙的位置', options:['靠窗角','最后一排','门口侧']},
-      { id:'A6c', text:'A6c. 你会反复做一些安抚性小动作', options:['捏衣角','抠指甲','理头发']},
-    ] },
-];
-
-const C1 = { id:'C1', text:'C1. 他们说，你之所以异样，是因为——（必须选择一条）', options:[
-  '你看起来不像这里的人', '你总是躲在镜头外', '你说话的方式让人不安'
-] };
-
-const B_QUESTIONS = [
-  { id:'B1', main:'B1. 你是否长期处于亲密关系焦虑？',
-    supplements:[
-      { id:'B1a', text:'B1a. 你担心被抛下的具体迹象是', options:['已读不回','临时失联','态度忽冷忽热']},
-      { id:'B1b', text:'B1b. 你趋向采取的自保方式是', options:['先疏离','过度粘连','测试对方']},
-      { id:'B1c', text:'B1c. 你最害怕重复的场景是', options:['门在你身后关上','屏幕突然黑','钥匙在门外']},
-    ] },
-  { id:'B2', main:'B2. 你是否常感觉被监视/被记录？',
-    supplements:[
-      { id:'B2a', text:'B2a. 你怀疑的来源主要是', options:['摄像头','窗外影子','系统日志']},
-      { id:'B2b', text:'B2b. 你采取的对抗方式是', options:['遮盖镜头','拉上窗帘','清理痕迹']},
-      { id:'B2c', text:'B2c. 你最怕被留存的东西是', options:['声音','指纹','面孔']},
-    ] },
-  { id:'B3', main:'B3. 你是否害怕陌生边界被侵入？',
-    supplements:[
-      { id:'B3a', text:'B3a. 你最不安的闯入来自', options:['同住者','陌生来电','系统弹窗']},
-      { id:'B3b', text:'B3b. 你会用什么方式重设边界', options:['换锁','更改密码','断网']},
-      { id:'B3c', text:'B3c. 一想到它，你的身体反应是', options:['胃部一紧','手心出汗','后颈发凉']},
-    ] },
-  { id:'B4', main:'B4. 你是否长期睡眠被打断？',
-    supplements:[
-      { id:'B4a', text:'B4a. 常见触发', options:['噪音','梦魇','身体痛感']},
-      { id:'B4b', text:'B4b. 你试过的方法', options:['药物','白噪音','通宵']},
-      { id:'B4c', text:'B4c. 醒来后的第一感觉', options:['沉重','空洞','过度清醒']},
-    ] },
-  { id:'B5', main:'B5. 你是否对自己的身体控制感减弱？',
-    supplements:[
-      { id:'B5a', text:'B5a. 你最常失控的部位', options:['手','眼','嘴']},
-      { id:'B5b', text:'B5b. 你察觉的方法', options:['镜子','录像','他人提醒']},
-      { id:'B5c', text:'B5c. 你的补偿性动作', options:['绑住','按压','缠胶带']},
-    ] },
-  { id:'B6', main:'B6. 你是否频繁经历自我怀疑与抽离？',
-    supplements:[
-      { id:'B6a', text:'B6a. 抽离最常出现于', options:['人群中','镜子前','夜行路']},
-      { id:'B6b', text:'B6b. 你拉回自己的方式', options:['掐掌心','念字母','盯住红点']},
-      { id:'B6c', text:'B6c. 你最害怕的引子', options:['他人呼名','手机震动','脚步声']},
-    ] },
-];
-
-const D_QUESTIONS = [
-  { id:'D1', text:'D1. 你更害怕哪一种门？', options:['打不开的门','自己打开的门','一直敲的门']},
-  { id:'D2', text:'D2. 哪一种光最让你不安？', options:['闪烁灯管','手机微光','电梯顶灯']},
-  { id:'D3', text:'D3. 哪种气味让你想逃离？', options:['潮霉','铁锈','消毒水']},
-  { id:'D4', text:'D4. 当房间忽然安静时，你会？', options:['停住不动','立刻说话','打开音乐']},
-  { id:'D5', text:'D5. 哪个时间点最不对劲？', options:['03:17','04:44','05:01']},
-  { id:'D6', text:'D6. 你最怕哪种脚步？', options:['跟在后面','从门外经过','从楼上停住']},
-  { id:'D7', text:'D7. 你会把镜子放在哪里？', options:['窗边','柜门内侧','床对面']},
-  { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名','电流嗡嗡']},
-];
-
-// ================= 逻辑与强力故障 =====================
-let stage = 'intro';
-let nameValue = '';
-let video, pg;                     // 离屏缓冲
-let glitch = { active:false, t:0, amp:40, slices:26 };
-let burstTimer = 0;                // 间歇性强故障计时器
-
-let aIndex = 0, pendingAAnchor=false, pendingASuppIndex=-1;
-let bIndex = 0, pendingBSuppIndex=-1;
-let identityCount = 0, anxietyCount = 0, totalAsked = 0;
-const answers = {};
-
-let contentDiv, titleDiv, footerCountDiv, barDiv;
-let activeButtons = []; let inputEl, startBtn;
-
-function setup(){
-  const holder = document.getElementById('sketch-holder');
-  const c = createCanvas(window.innerWidth, window.innerHeight); c.parent(holder); pixelDensity(1);
-  pg = createGraphics(width, height);
-
-  video = createCapture({ video:true, audio:false });
-  video.size(640, 480); video.hide();
-
-  contentDiv = select('#content'); titleDiv = select('#title'); footerCountDiv = select('#count'); barDiv = select('#bar');
-  renderIntro();
-}
-
-function windowResized(){ resizeCanvas(window.innerWidth, window.innerHeight); pg = createGraphics(width, height); }
-
-function draw(){
-  // 先把摄像头画到离屏 pg（镜像 + cover）
-  pg.push(); pg.clear(); pg.translate(pg.width, 0); pg.scale(-1, 1);
-  const w=pg.width,h=pg.height,vw=video.width,vh=video.height; const s=max(w/vw,h/vh); const dw=vw*s, dh=vh*s; pg.image(video,(w-dw)/2,(h-dh)/2,dw,dh); pg.pop();
-
-  // 间歇性强故障（每 3～6 秒爆发 0.4s）
-  if (frameCount > burstTimer){
-    glitch.active = true; glitch.t = 24; // 约 0.4s
-    glitch.amp = random(40, 70); glitch.slices = int(random(24, 42));
-    burstTimer = frameCount + int(random(180, 360));
-  }
-
-  if (glitch.active){ applyGlitch(pg, glitch.amp, glitch.slices, true); glitch.t--; if (glitch.t<=0) glitch.active=false; }
-  else { applyGlitch(pg, 8, 10, false); } // 常驻的轻微效果
-
-  image(pg, 0, 0, width, height);
-}
-
-function keyPressed(){ if (keyCode===ESCAPE){ glitch.active=true; glitch.t=18; glitch.amp=60; glitch.slices=36; } }
-
-// --- 故障：横向切片 + 块状错位 + 扫描线 + 色偏 ---
-function applyGlitch(g, amp=18, slices=16, heavy=false){
-  // 横向切片
-  for(let i=0;i<slices;i++){
-    const sh=int(random(6, 26)); const y=int(random(0, g.height-sh)); const dx=int(random(-amp, amp));
-    copy(g, 0, y, g.width, sh, dx, y, g.width, sh);
-  }
-  // 随机块错位（更像你给的参考图）
-  const blocks = heavy ? 18 : 6;
-  for(let i=0;i<blocks;i++){
-    const bw=int(random(40, 160)), bh=int(random(14, 60));
-    const sx=int(random(0, g.width-bw)), sy=int(random(0, g.height-bh));
-    const dx=int(sx + random(-amp, amp)), dy=int(sy + random(-amp, amp));
-    copy(g, sx, sy, bw, bh, dx, dy, bw, bh);
-  }
-  // 扫描线（黑白条带）
-  push(); noStroke(); const lineAlpha = heavy? 90:40; fill(255, lineAlpha);
-  for(let y=0; y<height; y+=4){ if(y%8===0) rect(0,y,width,2); }
-  pop();
-  // RGB 色偏
-  const off=int(random(-amp/3, amp/3));
-  blendMode(ADD); tint(255,60,60, heavy?110:60); image(g, off,0);    // R
-  tint(60,255,60, heavy?110:60); image(g,-off,0);   // G
-  tint(60,60,255, heavy?110:60); image(g, 0,off/2); // B
-  noTint(); blendMode(BLEND);
-}
-
-/******************** 问卷 UI 逻辑 ********************/
-function clearUI(){ activeButtons.forEach(b=>b.remove()); activeButtons=[]; if(inputEl){inputEl.remove();inputEl=null;} if(startBtn){startBtn.remove();startBtn=null;} }
-function setBar(){ const pct=Math.min(100, Math.round((totalAsked/13)*100)); barDiv.elt.style.width=pct+'%'; footerCountDiv.html(totalAsked.toString()); }
-function recordAnswer(qid,val){ answers[qid]=val; totalAsked++; setBar(); }
-
-function renderIntro(){ stage='intro'; titleDiv.html('请在下方输入你的名字：'); clearUI(); contentDiv.elt.classList.add('row','cols-2');
-  inputEl=createInput(''); inputEl.addClass('input'); inputEl.parent(contentDiv);
-  startBtn=createButton('开始答题'); startBtn.addClass('btn'); startBtn.parent(contentDiv); activeButtons.push(startBtn);
-  startBtn.mousePressed(()=>{ const v=inputEl.value().trim(); if(!v) return; nameValue=v; contentDiv.elt.classList.remove('cols-2'); goA(); }); setBar(); }
-
-function goA(){ stage='A'; clearUI(); pendingAAnchor=false; pendingASuppIndex=-1; renderA(); }
-function renderA(){ const q=A_QUESTIONS[aIndex]; if(!q) return goC1();
-  if(!pendingAAnchor && pendingASuppIndex===-1){ titleDiv.html(q.main); renderOptions([{label:YES,on:()=>onAMain(q,YES)},{label:NO,on:()=>onAMain(q,NO)}],2); }
-  else if(pendingAAnchor && pendingASuppIndex===-1){ titleDiv.html(q.anchor); renderOptions([{label:YES,on:()=>onAAnchor(q,YES)},{label:NO,on:()=>onAAnchor(q,NO)}],2); }
-  else { const s=q.supplements[pendingASuppIndex]; titleDiv.html(s.text); renderOptions(s.options.map(opt=>({label:opt,on:()=>onASupp(q,s,opt)})),1); } }
-function onAMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingAAnchor=true; } else { aIndex++; } clearUI(); renderA(); }
-function onAAnchor(q,ans){ recordAnswer(q.anchorId,ans); if(ans===YES){ identityCount++; pendingAAnchor=false; pendingASuppIndex=0; } else { pendingAAnchor=false; aIndex++; } clearUI(); renderA(); }
-function onASupp(q,s,choice){ recordAnswer(s.id,choice); pendingASuppIndex++; if(pendingASuppIndex>=q.supplements.length){ pendingASuppIndex=-1; return goB(); } clearUI(); renderA(); }
-
-function goC1(){ stage='C1'; clearUI(); titleDiv.html(C1.text); renderOptions(C1.options.map(opt=>({label:opt,on:()=>{recordAnswer(C1.id,opt); goB();}})),1); }
-function goB(){ stage='B'; clearUI(); pendingBSuppIndex=-1; renderB(); }
-function renderB(){ const q=B_QUESTIONS[bIndex]; if(!q) return questionCountCheck(); if(pendingBSuppIndex===-1){ titleDiv.html(q.main); renderOptions([{label:YES,on:()=>onBMain(q,YES)},{label:NO,on:()=>onBMain(q,NO)}],2); } else { const s=q.supplements[pendingBSuppIndex]; titleDiv.html(s.text); renderOptions(s.options.map(opt=>({label:opt,on:()=>onBSupp(q,s,opt)})),1); } }
-function onBMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingBSuppIndex=0; } else { bIndex++; } clearUI(); renderB(); }
-function onBSupp(q,s,choice){ recordAnswer(s.id,choice); pendingBSuppIndex++; if(pendingBSuppIndex>=q.supplements.length){ anxietyCount++; pendingBSuppIndex=-1; questionCountCheck(); } else { clearUI(); renderB(); } }
-
-let dIndex=0; function questionCountCheck(){ if(totalAsked>=13) return goDone(); goD(); }
-function goD(){ stage='D'; clearUI(); const dq=D_QUESTIONS[dIndex % D_QUESTIONS.length]; titleDiv.html(dq.text); renderOptions(dq.options.map(opt=>({label:opt,on:()=>{ recordAnswer(dq.id,opt); dIndex++; if(totalAsked>=13) goDone(); else goD(); }})),1); }
-
-function goDone(){ stage='done'; clearUI(); titleDiv.html((nameValue||'参与者')+'，谢谢你的回答。'); const btn=createButton('生成故事'); btn.addClass('btn'); btn.parent(contentDiv); activeButtons.push(btn);
-  btn.mousePressed(()=>{ const payload={ name:nameValue, answers, identityCount, anxietyCount, totalAsked };
-    if(USE_LOCAL_STORAGE){ try{ localStorage.setItem('quizPayload', JSON.stringify(payload)); }catch(e){} }
-    if(RESULT_URL && RESULT_URL.length>3){ window.location.href = RESULT_URL; }
-    else { console.warn('RESULT_URL 未设置。'); alert('已收集到 13 题答案。\n提示：你还没有设置结果页链接 RESULT_URL；已把数据写入 localStorage("quizPayload")，你可在故事页读取。'); }
-  }); setBar(); }
-
-function renderOptions(list, cols){ contentDiv.elt.classList.remove('cols-2'); contentDiv.elt.classList.add('row'); if(cols===2) contentDiv.elt.classList.add('cols-2'); else contentDiv.elt.classList.remove('cols-2'); list.forEach(({label,on})=>{ const b=createButton(label); b.addClass('btn'); b.parent(contentDiv); b.mousePressed(()=>{on&&on();}); activeButtons.push(b); }); setBar(); }
-</script>
-</body>
-</html>
-  { id:'A3', main:'A3. 你的身体差异常被凝视/标注过吗？', anchorId:'AA3', anchor:'AA3. 你是否因此避免公开照面或拍照？',
-    supplements:[
-      { id:'A3a', text:'A3a. 你习惯调整姿态以躲避镜头', options:[YES, NO, '不确定']},
-      { id:'A3b', text:'A3b. 你会下意识收敛动作', options:[YES, NO, '不确定']},
-      { id:'A3c', text:'A3c. 你不信任镜子里的自己', options:[YES, NO, '不确定']},
-    ] },
-  { id:'A4', main:'A4. 你是否是异乡人/外地身份而被区别对待？', anchorId:'AA4', anchor:'AA4. 你说话/穿着常被人判断“不是本地人”？',
-    supplements:[
-      { id:'A4a', text:'A4a. 你的声音带有口音或奇怪停顿', options:['口音','停顿','过快']},
-      { id:'A4b', text:'A4b. 你最显眼的特征常被记住', options:['肤色','穿着','眼神']},
-      { id:'A4c', text:'A4c. 人群中你身上的气味常被注意', options:['潮湿','辛辣','消毒水']},
-    ] },
-  { id:'A5', main:'A5. 你是否来自控制/压抑的家庭结构？', anchorId:'AA5', anchor:'AA5. 你的决定常被否定或被代替吗？',
-    supplements:[
-      { id:'A5a', text:'A5a. 你常在“更懂的人”面前沉默', options:[YES, NO, '不确定']},
-      { id:'A5b', text:'A5b. 你做选择会先想“家里会怎么说”', options:[YES, NO, '不确定']},
-      { id:'A5c', text:'A5c. 你梦见家里房间的门没有把手', options:[YES, NO, '不确定']},
-    ] },
-  { id:'A6', main:'A6. 你是否在社交中长期被忽略/边缘？', anchorId:'AA6', anchor:'AA6. 你是否习惯在角落观察而不发声？',
-    supplements:[
-      { id:'A6a', text:'A6a. 你常被描述为“不合拍/过安静”', options:['不合拍','过安静','不确定']},
-      { id:'A6b', text:'A6b. 你更倾向选择靠边/背墙的位置', options:['靠窗角','最后一排','门口侧']},
-      { id:'A6c', text:'A6c. 你会反复做一些安抚性小动作', options:['捏衣角','抠指甲','理头发']},
-    ] },
-];
-
-const C1 = { id:'C1', text:'C1. 他们说，你之所以异样，是因为——（必须选择一条）', options:[
-  '你看起来不像这里的人', '你总是躲在镜头外', '你说话的方式让人不安'
-] };
-
-const B_QUESTIONS = [
-  { id:'B1', main:'B1. 你是否长期处于亲密关系焦虑？',
-    supplements:[
-      { id:'B1a', text:'B1a. 你担心被抛下的具体迹象是', options:['已读不回','临时失联','态度忽冷忽热']},
-      { id:'B1b', text:'B1b. 你趋向采取的自保方式是', options:['先疏离','过度粘连','测试对方']},
-      { id:'B1c', text:'B1c. 你最害怕重复的场景是', options:['门在你身后关上','屏幕突然黑','钥匙在门外']},
-    ] },
-  { id:'B2', main:'B2. 你是否常感觉被监视/被记录？',
-    supplements:[
-      { id:'B2a', text:'B2a. 你怀疑的来源主要是', options:['摄像头','窗外影子','系统日志']},
-      { id:'B2b', text:'B2b. 你采取的对抗方式是', options:['遮盖镜头','拉上窗帘','清理痕迹']},
-      { id:'B2c', text:'B2c. 你最怕被留存的东西是', options:['声音','指纹','面孔']},
-    ] },
-  { id:'B3', main:'B3. 你是否害怕陌生边界被侵入？',
-    supplements:[
-      { id:'B3a', text:'B3a. 你最不安的闯入来自', options:['同住者','陌生来电','系统弹窗']},
-      { id:'B3b', text:'B3b. 你会用什么方式重设边界', options:['换锁','更改密码','断网']},
-      { id:'B3c', text:'B3c. 一想到它，你的身体反应是', options:['胃部一紧','手心出汗','后颈发凉']},
-    ] },
-  { id:'B4', main:'B4. 你是否长期睡眠被打断？',
-    supplements:[
-      { id:'B4a', text:'B4a. 常见触发', options:['噪音','梦魇','身体痛感']},
-      { id:'B4b', text:'B4b. 你试过的方法', options:['药物','白噪音','通宵']},
-      { id:'B4c', text:'B4c. 醒来后的第一感觉', options:['沉重','空洞','过度清醒']},
-    ] },
-  { id:'B5', main:'B5. 你是否对自己的身体控制感减弱？',
-    supplements:[
-      { id:'B5a', text:'B5a. 你最常失控的部位', options:['手','眼','嘴']},
-      { id:'B5b', text:'B5b. 你察觉的方法', options:['镜子','录像','他人提醒']},
-      { id:'B5c', text:'B5c. 你的补偿性动作', options:['绑住','按压','缠胶带']},
-    ] },
-  { id:'B6', main:'B6. 你是否频繁经历自我怀疑与抽离？',
-    supplements:[
-      { id:'B6a', text:'B6a. 抽离最常出现于', options:['人群中','镜子前','夜行路']},
-      { id:'B6b', text:'B6b. 你拉回自己的方式', options:['掐掌心','念字母','盯住红点']},
-      { id:'B6c', text:'B6c. 你最害怕的引子', options:['他人呼名','手机震动','脚步声']},
-    ] },
-];
-
-const D_QUESTIONS = [
-  { id:'D1', text:'D1. 你更害怕哪一种门？', options:['打不开的门','自己打开的门','一直敲的门']},
-  { id:'D2', text:'D2. 哪一种光最让你不安？', options:['闪烁灯管','手机微光','电梯顶灯']},
-  { id:'D3', text:'D3. 哪种气味让你想逃离？', options:['潮霉','铁锈','消毒水']},
-  { id:'D4', text:'D4. 当房间忽然安静时，你会？', options:['停住不动','立刻说话','打开音乐']},
-  { id:'D5', text:'D5. 哪个时间点最不对劲？', options:['03:17','04:44','05:01']},
-  { id:'D6', text:'D6. 你最怕哪种脚步？', options:['跟在后面','从门外经过','从楼上停住']},
-  { id:'D7', text:'D7. 你会把镜子放在哪里？', options:['窗边','柜门内侧','床对面']},
-  { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名','电流嗡嗡']},
-];
-
-// ================= 逻辑状态机 =====================
-let stage = 'intro'; // intro | A | C1 | B | D | done
-let nameValue = '';
-let video;
-let pg;            // 离屏图层，用于故障处理
-let glitch = { active:false, t:0, amp:22, slices:22 };
-let microGlitchTick = 0; // 轻微随机抖动
-
-// A 段流程状态
-let aIndex = 0;                // 进行到第几个 A
-let pendingAAnchor = false;    // 是否显示 AA
-let pendingASuppIndex = -1;    // -1=无，0..2 表示补充题索引
-
-// B 段流程状态
-let bIndex = 0;
-let pendingBSuppIndex = -1;    // -1=无，0..2
-
-// 统计
-let identityCount = 0;         // 确认的身份原型数
-let anxietyCount = 0;          // 确认的焦虑原型数
-let totalAsked = 0;            // 累计题目（含 AA 和补充）
-
-// 答案
-const answers = {};            // { qid: value }
-
-// UI DOM 管理
-let contentDiv, titleDiv, footerCountDiv, barDiv;
-let activeButtons = [];        // 当前屏幕上生成的按钮引用
-let inputEl, startBtn;         // intro 用
-
-function setup(){
-  const holder = document.getElementById('sketch-holder');
-  const c = createCanvas(window.innerWidth, window.innerHeight);
-  c.parent(holder);
-  pixelDensity(1);
-
-  // 离屏缓冲
-  pg = createGraphics(width, height);
-
-  // 摄像头
-  video = createCapture({ video:true, audio:false });
-  video.size(640, 480);
-  video.hide();
-
-  // 绑定 UI 容器
-  contentDiv = select('#content');
-  titleDiv = select('#title');
-  footerCountDiv = select('#count');
-  barDiv = select('#bar');
-
-  renderIntro();
-}
-
-function windowResized(){
-  resizeCanvas(window.innerWidth, window.innerHeight);
-  pg = createGraphics(width, height);
-}
-
-function draw(){
-  // --- 把摄像头画到离屏 pg（镜像 + cover 填充） ---
-  pg.push();
-  pg.clear();
-  pg.translate(pg.width, 0); // 镜像
-  pg.scale(-1, 1);
-  const w = pg.width, h = pg.height;
-  const vw = video.width, vh = video.height;
-  const scaleFit = max(w/vw, h/vh);
-  const dw = vw*scaleFit, dh = vh*scaleFit;
-  pg.image(video, (w-dw)/2, (h-dh)/2, dw, dh);
-  pg.pop();
-
-  // --- 故障：微弱常驻 + 强闪（按 Esc） ---
-  if (glitch.active){
-    applyGlitch(pg, glitch.amp, glitch.slices);
-    glitch.t--;
-    if (glitch.t <= 0) glitch.active = false;
-  } else {
-    // 微弱抖动：每 60 帧触发一次小幅错位
-    microGlitchTick = (microGlitchTick + 1) % 60;
-    if (microGlitchTick === 0) applyGlitch(pg, 6, 8);
-  }
-
-  // --- 叠加到主画布 ---
-  image(pg, 0, 0, width, height);
-}
-
-function keyPressed(){
-  if (keyCode === ESCAPE){
-    glitch.active = true; glitch.t = 12; // 约 0.2 秒
-  }
-}
-
-// =============== 故障算法：切片横向错位 + 轻微色偏 ===============
-function applyGlitch(g, amp=18, slices=16){
-  // 横向切片平移
-  for (let i=0;i<slices;i++){
-    const sh = int(random(4, 24));   // 切片高度
-    const y  = int(random(0, g.height - sh));
-    const dx = int(random(-amp, amp));
-    // 将这条横条向左/右平移
-    copy(g, 0, y, g.width, sh, dx, y, g.width, sh);
-  }
-  // 伪色偏（RGB 轻微错位）
-  const offset = int(random(-amp/4, amp/4));
-  blendMode(ADD);
-  tint(255, 50, 50, 45); image(g, offset, 0); // R
-  tint(50, 255, 50, 45); image(g, -offset, 0); // G
-  tint(50, 50, 255, 45); image(g, 0, offset/2); // B
-  noTint(); blendMode(BLEND);
-}
-
-// =============== 渲染与事件（问卷 UI） ===============
-function clearUI(){
-  activeButtons.forEach(b => b.remove());
-  activeButtons = [];
-  if (inputEl) { inputEl.remove(); inputEl = null; }
-  if (startBtn) { startBtn.remove(); startBtn = null; }
-}
-
-function setBar(){
-  const pct = Math.min(100, Math.round((totalAsked/13)*100));
-  barDiv.elt.style.width = pct + '%';
-  footerCountDiv.html(totalAsked.toString());
-}
-
-function recordAnswer(qid, value){
-  answers[qid] = value;
-  totalAsked++;
-  setBar();
-}
-
-// ---------- Intro ----------
-function renderIntro(){
-  stage = 'intro';
-  titleDiv.html('请在下方输入你的名字：');
-  clearUI();
-
-  contentDiv.elt.classList.remove('cols-2');
-  contentDiv.elt.classList.add('row','cols-2');
-
-  inputEl = createInput('');
-  inputEl.addClass('input');
-  inputEl.parent(contentDiv);
-
-  startBtn = createButton('开始答题');
-  startBtn.addClass('btn');
-  startBtn.parent(contentDiv);
-  activeButtons.push(startBtn);
-
-  startBtn.mousePressed(()=>{
-    const v = inputEl.value().trim();
-    if (!v) return;
-    nameValue = v;
-    contentDiv.elt.classList.remove('cols-2');
-    goA();
-  });
-
-  setBar();
-}
-
-// ---------- A 段主入口 ----------
-function goA(){
-  stage = 'A';
-  clearUI();
-  pendingAAnchor = false; pendingASuppIndex = -1;
-  renderA();
-}
-
-function renderA(){
-  const q = A_QUESTIONS[aIndex];
-  if (!q){ return goC1(); }
-
-  if (!pendingAAnchor && pendingASuppIndex === -1){
-    titleDiv.html(q.main);
-    renderOptions([
-      {label:YES, on:()=> onAMain(q, YES)},
-      {label:NO,  on:()=> onAMain(q, NO)},
-    ], 2);
-  } else if (pendingAAnchor && pendingASuppIndex === -1){
-    titleDiv.html(q.anchor);
-    renderOptions([
-      {label:YES, on:()=> onAAnchor(q, YES)},
-      {label:NO,  on:()=> onAAnchor(q, NO)},
-    ], 2);
-  } else if (pendingASuppIndex > -1){
-    const s = q.supplements[pendingASuppIndex];
-    titleDiv.html(s.text);
-    renderOptions(s.options.map(opt=>({label:opt, on:()=> onASupp(q, s, opt)})), 1);
-  }
-}
-
-function onAMain(q, ans){
-  recordAnswer(q.id, ans);
-  if (ans === YES){
-    pendingAAnchor = true; clearUI(); renderA();
-  } else { aIndex++; clearUI(); renderA(); }
-}
-
-function onAAnchor(q, ans){
-  recordAnswer(q.anchorId, ans);
-  if (ans === YES){ identityCount++; pendingAAnchor = false; pendingASuppIndex = 0; clearUI(); renderA(); }
-  else { pendingAAnchor = false; aIndex++; clearUI(); renderA(); }
-}
-
-function onASupp(q, s, choice){
-  recordAnswer(s.id, choice);
-  pendingASuppIndex++;
-  if (pendingASuppIndex >= q.supplements.length){ pendingASuppIndex = -1; return goB(); }
-  clearUI(); renderA();
-}
-
-// ---------- C1（仅当 A 主问题全否） ----------
-function goC1(){
-  stage = 'C1';
-  clearUI();
-  titleDiv.html(C1.text);
-  renderOptions(C1.options.map(opt=>({label:opt, on:()=>{ recordAnswer(C1.id, opt); goB(); }})), 1);
-}
-
-// ---------- B 段 ----------
-function goB(){ stage = 'B'; clearUI(); pendingBSuppIndex = -1; renderB(); }
-
-function renderB(){
-  const q = B_QUESTIONS[bIndex];
-  if (!q){ return questionCountCheck(); }
-  if (pendingBSuppIndex === -1){
-    titleDiv.html(q.main);
-    renderOptions([
-      {label:YES, on:()=> onBMain(q, YES)},
-      {label:NO,  on:()=> onBMain(q, NO)},
-    ], 2);
-  } else {
-    const s = q.supplements[pendingBSuppIndex];
-    titleDiv.html(s.text);
-    renderOptions(s.options.map(opt=>({label:opt, on:()=> onBSupp(q, s, opt)})), 1);
-  }
-}
-
-function onBMain(q, ans){
-  recordAnswer(q.id, ans);
-  if (ans === YES){ pendingBSuppIndex = 0; } else { bIndex++; }
-  clearUI(); renderB();
-}
-
-function onBSupp(q, s, choice){
-  recordAnswer(s.id, choice);
-  pendingBSuppIndex++;
-  if (pendingBSuppIndex >= q.supplements.length){ anxietyCount++; pendingBSuppIndex = -1; questionCountCheck(); }
-  else { clearUI(); renderB(); }
-}
-
-// ---------- D 段：补足到 13 ----------
-let dIndex = 0;
-function questionCountCheck(){ if (totalAsked >= 13){ return goDone(); } goD(); }
-
-function goD(){
-  stage = 'D'; clearUI();
-  const dq = D_QUESTIONS[dIndex % D_QUESTIONS.length];
-  titleDiv.html(dq.text);
-  renderOptions(dq.options.map(opt=>({label:opt, on:()=>{ recordAnswer(dq.id, opt); dIndex++; if (totalAsked >= 13) goDone(); else goD(); }})), 1);
-}
-
-// ---------- 结束 ----------
-function goDone(){
-  stage = 'done'; clearUI();
-  titleDiv.html((nameValue || '参与者') + '，谢谢你的回答。');
-  const btn = createButton('生成故事');
-  btn.addClass('btn'); btn.parent(contentDiv); activeButtons.push(btn);
-  btn.mousePressed(()=>{
-    console.log('完成问卷：', { name:nameValue, answers, identityCount, anxietyCount, totalAsked });
-    alert('已收集到 13 题答案，下一步进入故事生成页。\n(打开控制台可查看结构化数据)');
-  });
-  setBar();
-}
-
-// ---------- 通用：渲染按钮组 ----------
-function renderOptions(list, cols){
-  contentDiv.elt.classList.remove('cols-2');
-  contentDiv.elt.classList.add('row');
-  if (cols === 2) contentDiv.elt.classList.add('cols-2'); else contentDiv.elt.classList.remove('cols-2');
-  list.forEach(({label, on})=>{ const b = createButton(label); b.addClass('btn'); b.parent(contentDiv); b.mousePressed(()=>{ on && on(); }); activeButtons.push(b); });
-  setBar();
-}
 </script>
 </body>
 </html>
