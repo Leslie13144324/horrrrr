@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>如何被写进恐怖故事里 · 答题页 (p5.js + 持续故障)</title>
+  <title>如何被写进恐怖故事里 · 答题页 (p5.js + 递进式故障)</title>
   <!-- p5.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
@@ -38,18 +38,26 @@
 
 <script>
 /******************** 跳转配置（根据你的结果页修改） ************************/
-const RESULT_URL = "https://68a92fb772ac69988402ad9d--effortless-muffin-585e6f.netlify.app/";          // 例如 "https://your-name.github.io/project/story.html"
+const RESULT_URL = "";          // 例如 "https://your-name.github.io/project/story.html"
 const USE_LOCAL_STORAGE = true;  // 故事页读取 localStorage('quizPayload')
 /***************************************************************************/
 
-/******************** 持续故障参数（可调） ************************/
-const GLITCH_BASE_AMP = 40;   // 基础位移幅度（越大越乱）
-const GLITCH_JITTER   = 28;   // 基于噪声的额外抖动幅度
-const GLITCH_SLICES   = 42;   // 横向切片数量
-const GLITCH_BLOCKS   = 20;   // 随机块错位数量
-const GLITCH_SCAN_GAP = 3;    // 扫描线行距（越小越密）
-const GLITCH_SCAN_STR = 110;  // 扫描线强度(0~255)
-const GLITCH_CHROMA   = 130;  // RGB 色偏强度(0~255)
+/******************** 故障曲线（每答一题增强） **********************/
+// 起点：几乎无故障（只有轻微朦胧）→ 13 题：强烈“方片+条纹”
+function paramsByProgress(n){ // n = 0..13
+  const t = constrain(n/13, 0, 1);
+  // 平滑增长（ease）
+  const e = t*t*(3-2*t);
+  return {
+    amp: lerp(0, 60, e),          // 平移幅度
+    slices: int(lerp(0, 48, e)),  // 横条数量
+    blocks: int(lerp(0, 28, e)),  // 方片数量
+    scanGap: max(2, int(lerp(8, 3, e))),
+    scanAlpha: int(lerp(0, 120, e)),
+    chroma: int(lerp(0, 140, e)),
+    haze: lerp(14, 0, e)          // 朦胧（开始大，越答越清晰）
+  };
+}
 /***************************************************************************/
 
 // ================= 问题配置（占位，按需替换） =====================
@@ -149,7 +157,7 @@ const D_QUESTIONS = [
   { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名','电流嗡嗡']},
 ];
 
-/******************** 画布与故障 ********************/
+/******************** 画布与“递进式故障” ********************/
 let video, pg;                     // 离屏缓冲
 
 function setup(){
@@ -168,52 +176,55 @@ function setup(){
 function windowResized(){ resizeCanvas(window.innerWidth, window.innerHeight); pg = createGraphics(width, height); }
 
 function draw(){
-  // 把摄像头画到离屏 pg（镜像 + cover）
+  // 摄像头→离屏 pg（镜像 + cover）
   pg.push(); pg.clear(); pg.translate(pg.width, 0); pg.scale(-1, 1);
   const w=pg.width,h=pg.height,vw=video.width,vh=video.height; const s=max(w/vw,h/vh); const dw=vw*s, dh=vh*s; pg.image(video,(w-dw)/2,(h-dh)/2,dw,dh); pg.pop();
 
-  // 连续故障（每帧都有，随噪声起伏）—— 直接对 pg 动刀
-  const t = millis() * 0.0008;
-  const ampNoise = noise(t*1.7) * GLITCH_JITTER;       // 0 ~ JITTER
-  const amp = GLITCH_BASE_AMP + ampNoise;              // 基础 + 抖动
-  const slices = GLITCH_SLICES + int(noise(t*2.1)*6 - 3);
-  const blocks = GLITCH_BLOCKS + int(noise(t*1.3)*6 - 3);
-  applyGlitch(pg, amp, slices, blocks, t);
+  // 根据已答题数调参
+  const p = paramsByProgress(totalAsked);
 
-  // 先画被破坏的 pg
+  // 朦胧（开始强，之后减弱）
+  if (p.haze > 0) { pg.filter(BLUR, p.haze/12); pg.fill(255, 20); pg.noStroke(); pg.rect(0,0,pg.width,pg.height); }
+
+  // 每帧应用“方片 + 条纹” 故障到 pg 本体
+  applyGlitchProgressive(pg, p);
+
+  // 画到主画布
   image(pg, 0, 0, width, height);
 
-  // 再在主画布做 RGB 偏移叠加
-  const off = int(map(noise(t*4.3), 0, 1, -amp/2.5, amp/2.5));
-  blendMode(ADD);
-  tint(255,60,60, GLITCH_CHROMA); image(pg,  off, 0);
-  tint(60,255,60, GLITCH_CHROMA); image(pg, -off, 0);
-  tint(60,60,255, GLITCH_CHROMA); image(pg,   0, off/2);
-  noTint(); blendMode(BLEND);
+  // 再做 RGB 色偏（强度随进度）
+  if (p.chroma > 0){
+    const off = int(map(noise(millis()*0.004), 0, 1, -p.amp/2.5, p.amp/2.5));
+    blendMode(ADD);
+    tint(255,60,60, p.chroma); image(pg,  off, 0);
+    tint(60,255,60, p.chroma); image(pg, -off, 0);
+    tint(60,60,255, p.chroma); image(pg,   0, off/2);
+    noTint(); blendMode(BLEND);
+  }
 }
 
-// 连续故障：横向切片 + 块错位 + 动态扫描线（都直接写入 pg）
-function applyGlitch(g, amp, slices, blocks, t){
-  // 横向切片错位
-  for(let i=0;i<slices;i++){
+function applyGlitchProgressive(g, p){
+  const t = millis()*0.001;
+  // 横向切片：数量/位移随进度
+  for(let i=0;i<p.slices;i++){
     const sh=int(random(6, 24)); const y=int(random(0, g.height-sh));
-    const n=noise(t*3 + i*0.17); const dx=int(map(n,0,1,-amp,amp));
+    const n=noise(t*3 + i*0.17); const dx=int(map(n,0,1,-p.amp, p.amp));
     g.copy(g, 0, y, g.width, sh, dx, y, g.width, sh);
   }
-  // 随机块错位
-  for(let i=0;i<blocks;i++){
-    const bw=int(random(50, 180)), bh=int(random(16, 64));
+  // 方片（块状）错位
+  for(let i=0;i<p.blocks;i++){
+    const bw=int(random(40, 160)), bh=int(random(14, 60));
     const sx=int(random(0, g.width-bw)), sy=int(random(0, g.height-bh));
     const nx=noise(t*2.4 + i*0.31), ny=noise(t*2.7 + i*0.37);
-    const dx=int(sx + map(nx,0,1,-amp,amp)), dy=int(sy + map(ny,0,1,-amp*0.6,amp*0.6));
+    const dx=int(sx + map(nx,0,1,-p.amp, p.amp));
+    const dy=int(sy + map(ny,0,1,-p.amp*0.6, p.amp*0.6));
     g.copy(g, sx, sy, bw, bh, dx, dy, bw, bh);
   }
-  // 扫描线（画在 g 上，不会被覆盖）
-  g.noStroke(); const scanOffset=(sin(t*5.2)*0.5 + 0.5) * GLITCH_SCAN_GAP; g.fill(255, GLITCH_SCAN_STR);
-  for(let y=int(scanOffset); y<g.height; y+=GLITCH_SCAN_GAP){ if (y % (GLITCH_SCAN_GAP*2) === 0) g.rect(0,y,g.width,2); }
+  // 扫描线（条纹）
+  if (p.scanAlpha>0){ g.noStroke(); g.fill(255, p.scanAlpha); const gap=p.scanGap; for(let y=int((sin(t*5.2)*0.5+0.5)*gap); y<g.height; y+=gap){ if (y%(gap*2)===0) g.rect(0,y,g.width,2); } }
 }
 
-/******************** 问卷 UI 逻辑 ********************/
+/******************** 问卷 UI 逻辑（按你新规则） ********************/
 let stage = 'intro';
 let nameValue = '';
 let aIndex = 0, pendingAAnchor=false, pendingASuppIndex=-1;
@@ -228,29 +239,44 @@ function clearUI(){ activeButtons.forEach(b=>b.remove()); activeButtons=[]; if(i
 function setBar(){ const pct=Math.min(100, Math.round((totalAsked/13)*100)); barDiv.elt.style.width=pct+'%'; footerCountDiv.html(totalAsked.toString()); }
 function recordAnswer(qid,val){ answers[qid]=val; totalAsked++; setBar(); }
 
+// Intro
 function renderIntro(){ stage='intro'; titleDiv.html('请在下方输入你的名字：'); clearUI(); contentDiv.elt.classList.add('row','cols-2');
   inputEl=createInput(''); inputEl.addClass('input'); inputEl.parent(contentDiv);
   startBtn=createButton('开始答题'); startBtn.addClass('btn'); startBtn.parent(contentDiv); activeButtons.push(startBtn);
   startBtn.mousePressed(()=>{ const v=inputEl.value().trim(); if(!v) return; nameValue=v; contentDiv.elt.classList.remove('cols-2'); goA(); }); setBar(); }
 
+// A：只要命中 1 个身份原型 → 不再继续 A，直接进入 B（而不是直接 D）
 function goA(){ stage='A'; clearUI(); pendingAAnchor=false; pendingASuppIndex=-1; renderA(); }
-function renderA(){ const q=A_QUESTIONS[aIndex]; if(!q) return goC1();
+function renderA(){ const q=A_QUESTIONS[aIndex]; if(!q){ // A 主问题全部否 → C1 → B
+    return goC1(); }
   if(!pendingAAnchor && pendingASuppIndex===-1){ titleDiv.html(q.main); renderOptions([{label:YES,on:()=>onAMain(q,YES)},{label:NO,on:()=>onAMain(q,NO)}],2); }
   else if(pendingAAnchor && pendingASuppIndex===-1){ titleDiv.html(q.anchor); renderOptions([{label:YES,on:()=>onAAnchor(q,YES)},{label:NO,on:()=>onAAnchor(q,NO)}],2); }
   else { const s=q.supplements[pendingASuppIndex]; titleDiv.html(s.text); renderOptions(s.options.map(opt=>({label:opt,on:()=>onASupp(q,s,opt)})),1); } }
 function onAMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingAAnchor=true; } else { aIndex++; } clearUI(); renderA(); }
 function onAAnchor(q,ans){ recordAnswer(q.anchorId,ans); if(ans===YES){ identityCount++; pendingAAnchor=false; pendingASuppIndex=0; } else { pendingAAnchor=false; aIndex++; } clearUI(); renderA(); }
-function onASupp(q,s,choice){ recordAnswer(s.id,choice); pendingASuppIndex++; if(pendingASuppIndex>=q.supplements.length){ pendingASuppIndex=-1; return goB(); } clearUI(); renderA(); }
+function onASupp(q,s,choice){ recordAnswer(s.id,choice); pendingASuppIndex++; if(pendingASuppIndex>=q.supplements.length){ // A 补充问完
+    pendingASuppIndex=-1; // 命中过身份 → 立即进入 B
+    return goB();
+  } clearUI(); renderA(); }
 
+// C1：只有当 A1–A6 主问题全否时触发，然后必进 B
 function goC1(){ stage='C1'; clearUI(); titleDiv.html(C1.text); renderOptions(C1.options.map(opt=>({label:opt,on:()=>{recordAnswer(C1.id,opt); goB();}})),1); }
-function goB(){ stage='B'; clearUI(); pendingBSuppIndex=-1; renderB(); }
-function renderB(){ const q=B_QUESTIONS[bIndex]; if(!q) return questionCountCheck(); if(pendingBSuppIndex===-1){ titleDiv.html(q.main); renderOptions([{label:YES,on:()=>onBMain(q,YES)},{label:NO,on:()=>onBMain(q,NO)}],2); } else { const s=q.supplements[pendingBSuppIndex]; titleDiv.html(s.text); renderOptions(s.options.map(opt=>({label:opt,on:()=>onBSupp(q,s,opt)})),1); } }
-function onBMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingBSuppIndex=0; } else { bIndex++; } clearUI(); renderB(); }
-function onBSupp(q,s,choice){ recordAnswer(s.id,choice); pendingBSuppIndex++; if(pendingBSuppIndex>=q.supplements.length){ anxietyCount++; pendingBSuppIndex=-1; questionCountCheck(); } else { clearUI(); renderB(); } }
 
+// B：从 B1 往后问到命中 1 个焦虑原型（出现补充题且完成）就退出；若 B1–B6 都未命中，则走数量检验
+function goB(){ stage='B'; clearUI(); pendingBSuppIndex=-1; renderB(); }
+function renderB(){ const q=B_QUESTIONS[bIndex]; if(!q){ // B 全部问完也没命中 → 数量检验
+    return questionCountCheck(); }
+  if(pendingBSuppIndex===-1){ titleDiv.html(q.main); renderOptions([{label:YES,on:()=>onBMain(q,YES)},{label:NO,on:()=>onBMain(q,NO)}],2); } else { const s=q.supplements[pendingBSuppIndex]; titleDiv.html(s.text); renderOptions(s.options.map(opt=>({label:opt,on:()=>onBSupp(q,s,opt)})),1); } }
+function onBMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingBSuppIndex=0; } else { bIndex++; } clearUI(); renderB(); }
+function onBSupp(q,s,choice){ recordAnswer(s.id,choice); pendingBSuppIndex++; if(pendingBSuppIndex>=q.supplements.length){ // 命中 1 个焦虑原型
+    anxietyCount++; pendingBSuppIndex=-1; return questionCountCheck();
+  } else { clearUI(); renderB(); } }
+
+// D：仅用于补足到 13 题
 let dIndex=0; function questionCountCheck(){ if(totalAsked>=13) return goDone(); goD(); }
 function goD(){ stage='D'; clearUI(); const dq=D_QUESTIONS[dIndex % D_QUESTIONS.length]; titleDiv.html(dq.text); renderOptions(dq.options.map(opt=>({label:opt,on:()=>{ recordAnswer(dq.id,opt); dIndex++; if(totalAsked>=13) goDone(); else goD(); }})),1); }
 
+// 结束与跳转
 function goDone(){ stage='done'; clearUI(); titleDiv.html((nameValue||'参与者')+'，谢谢你的回答。'); const btn=createButton('生成故事'); btn.addClass('btn'); btn.parent(contentDiv); activeButtons.push(btn);
   btn.mousePressed(()=>{ const payload={ name:nameValue, answers, identityCount, anxietyCount, totalAsked };
     if(USE_LOCAL_STORAGE){ try{ localStorage.setItem('quizPayload', JSON.stringify(payload)); }catch(e){} }
@@ -258,6 +284,7 @@ function goDone(){ stage='done'; clearUI(); titleDiv.html((nameValue||'参与者
     else { alert('已收集到 13 题答案。\n提示：你还没有设置结果页链接 RESULT_URL；已把数据写入 localStorage("quizPayload")。'); }
   }); setBar(); }
 
+// 通用渲染
 function renderOptions(list, cols){ contentDiv.elt.classList.remove('cols-2'); contentDiv.elt.classList.add('row'); if(cols===2) contentDiv.elt.classList.add('cols-2'); else contentDiv.elt.classList.remove('cols-2'); list.forEach(({label,on})=>{ const b=createButton(label); b.addClass('btn'); b.parent(contentDiv); b.mousePressed(()=>{on&&on();}); activeButtons.push(b); }); setBar(); }
 </script>
 </body>
