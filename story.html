@@ -3,17 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>如何被写进恐怖故事里 · 结果页</title>
+  <title>如何被写进恐怖故事里 · 结果页（带背景故障）</title>
+  <!-- p5.js 用于摄像头+glitch 背景 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
   <style>
     :root { --red:#e11919; --ink:#f7f7f7; }
     html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;}
-    .wrap{min-height:100%;display:grid;place-items:center;padding:40px 16px;}
+    /* 背景画布层 */
+    #sketch-holder{ position:fixed; inset:0; z-index:0; }
+    .vignette{ position:fixed; inset:0; z-index:1; pointer-events:none; background: radial-gradient(ellipse at center, rgba(0,0,0,.0) 40%, rgba(0,0,0,.55) 100%); }
+
+    /* 前景卡片 */
+    .wrap{min-height:100%;position:relative;z-index:2;display:grid;place-items:center;padding:40px 16px;}
     .card{max-width:980px;width:min(92vw,980px);background:rgba(0,0,0,.55);border:1px solid rgba(255,80,80,.5);border-radius:18px;box-shadow:0 10px 40px rgba(255,0,0,.12);backdrop-filter: blur(2px);}
-    .hd{padding:16px 18px;border-bottom:1px dashed rgba(255,80,80,.35);display:flex;justify-content:space-between;align-items:center}
-    .who{font-size:16px;opacity:.9}
+    .hd{padding:16px 18px;border-bottom:1px dashed rgba(255,80,80,.35);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .who{font-size:16px;opacity:.95}
     .tag{padding:4px 10px;border:1px solid rgba(255,80,80,.6);border-radius:999px;color:#ffdada;background:rgba(0,0,0,.35);font-size:12px}
     .story{padding:22px 22px 26px;line-height:1.75;font-size:18px;}
-    .ribbon{display:inline;box-decoration-break: clone;-webkit-box-decoration-break: clone;background:rgba(210,20,20,.9);color:#fff;border-radius:10px;padding:2px 8px;margin:0 2px;}
+    .ribbon{display:inline;box-decoration-break: clone;-webkit-box-decoration-break: clone;background:rgba(210,20,20,.95);color:#fff;border-radius:10px;padding:2px 8px;margin:0 2px;}
     .meta{padding:0 22px 20px;color:#ffdfdf80;font-size:13px}
     .btns{display:flex;gap:10px;padding:0 22px 24px}
     .btn{cursor:pointer;border-radius:12px;border:1px solid rgba(255,80,80,.6);background:rgba(0,0,0,.55);color:#ffd6d6;padding:10px 14px}
@@ -21,6 +29,11 @@
   </style>
 </head>
 <body>
+  <!-- 背景 p5 画布容器 -->
+  <div id="sketch-holder"></div>
+  <div class="vignette"></div>
+
+  <!-- 故事内容卡片 -->
   <div class="wrap">
     <article class="card">
       <header class="hd">
@@ -37,28 +50,134 @@
   </div>
 
   <script>
-  // —— 读取问卷结果 ——
+  /******************** 读取问卷结果 → 选择并渲染故事 ********************/
   const payload = (()=>{ try { return JSON.parse(localStorage.getItem('quizPayload')||'{}'); } catch(e){ return {}; } })();
   const name = payload.name || '参与者';
-  const A = {}; const B = {}; const C = {};
   const ans = payload.answers || {};
+  const A = {}, B = {}, C = {};
 
-  // —— 从答案里提取命中的原型 ——
   // A：找出第一个 AAx === '是' 的 A 编号（A1..A6），并取 a/b/c 特征
-  let aHit = null; // e.g., 'A1'
-  for(let i=1;i<=6;i++){
-    const AA = ans['AA'+i];
-    if(AA === '是') { aHit = 'A'+i; break; }
-  }
-  if(aHit){
-    A.id = aHit; A.type = 'identity';
-    A.a = ans[aHit+'a']; A.b = ans[aHit+'b']; A.c = ans[aHit+'c'];
-  }
+  let aHit = null; for(let i=1;i<=6;i++){ if(ans['AA'+i] === '是'){ aHit = 'A'+i; break; } }
+  if(aHit){ A.id=aHit; A.type='identity'; A.a=ans[aHit+'a']; A.b=ans[aHit+'b']; A.c=ans[aHit+'c']; }
+  // B：找出第一个 Bx === '是' 的编号
+  let bHit = null; for(let i=1;i<=6;i++){ if(ans['B'+i] === '是'){ bHit = 'B'+i; break; } }
+  if(bHit){ B.id=bHit; B.type='anxiety'; B.a=ans[bHit+'a']; B.b=ans[bHit+'b']; B.c=ans[bHit+'c']; }
+  // C1：记录选项
+  if(ans['C1']){ C.id='C1'; C.choice=ans['C1']; }
 
-  // B：找出第一个 Bx === '是' 且回答了 a/b/c 的编号
-  let bHit = null;
-  for(let i=1;i<=6;i++){
-    if(ans['B'+i] === '是') { bHit = 'B'+i; break; }
+  // 选择故事键（若 B 和 C 同时存在 → 用 B；否则 A 优先，其次 B，其次 C）
+  let key=null, label='';
+  if(B.id && C.id){ key=B.id; label='焦虑原型 '+B.id; }
+  else if(aHit){ key=A.id; label='身份原型 '+A.id; }
+  else if(B.id){ key=B.id; label='焦虑原型 '+B.id; }
+  else if(C.id){ key=C.id; label='伪归类 '+C.id; }
+
+  // 故事模板：请把 15 篇中文故事填到下方（占位）。已示例 A1
+  const T = {
+    A1: `她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。\n领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。\n有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，[A1a特征]，[A1c特征]。\n她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。[A1b特征]。\n有天晚上我们加班，办公室只剩我和她。我走过去想问她要不要一起走，结果看到她正在镜子前低头调整什么。不是妆容，不是衣领——是脸。\n她把脸从脸上慢慢剥下来，从额头撕开，再一寸一寸地卷到下巴。里面是空的。只有白白的塑料架子，像模特头。\n她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`,
+
+    A2:``,A3:``,A4:``,A5:``,A6:``,
+    B1:``,B2:``,B3:``,B4:``,B5:``,B6:``,
+    C1:``
+  };
+
+  function renderStory(){
+    const who = document.getElementById('who');
+    const tag = document.getElementById('tag');
+    const storyBox = document.getElementById('story');
+    const meta = document.getElementById('meta');
+
+    who.textContent = `${name} · 你的故事`;
+    tag.textContent = label || '未归类';
+
+    if(!key || !T[key]){ storyBox.textContent='（没有找到可用的故事模板。请返回上一页重新作答，或补充 15 篇故事文本。）'; meta.textContent=''; return; }
+
+    let txt = T[key];
+    if(key.startsWith('A')){
+      txt = txt.replaceAll(`[${key}a特征]`, A.a||'')
+               .replaceAll(`[${key}b特征]`, A.b||'')
+               .replaceAll(`[${key}c特征]`, A.c||'');
+    }else if(key.startsWith('B')){
+      txt = txt.replaceAll(`[${key}a]`, B.a||'')
+               .replaceAll(`[${key}b]`, B.b||'')
+               .replaceAll(`[${key}c]`, B.c||'');
+    }else if(key==='C1'){
+      txt = (T[key]||'').replaceAll('[C1选项]', C.choice||'');
+    }
+
+    storyBox.innerHTML = decorate(txt);
+    const answered = payload.totalAsked!=null ? payload.totalAsked : Object.keys(ans).length;
+    meta.textContent = `已答题：${answered} 题｜身份原型：${A.id||'—'}｜焦虑原型：${B.id||'—'}｜C1：${C.choice||'—'}`;
+  }
+  function decorate(s){
+    return s.replace(/\n/g,'<br/>').replace(/\[(.*?)\]/g,(m,p1)=>`<span class="ribbon">${p1}</span>`);
+  }
+  renderStory();
+
+  // 简易保存提示（需要可换成 html2canvas 导出）
+  document.getElementById('saveBtn').addEventListener('click',()=>{
+    alert('提示：按系统截图快捷键保存当前海报。若需一键导出，我可以再加 html2canvas。');
+  });
+  </script>
+
+  <script>
+  /******************** p5 背景：摄像头 + 故障（恒定/轻微） ********************/
+  const GLITCH = { AMP: 36, SLICES: 36, BLOCKS: 18, SCAN_GAP: 4, SCAN_ALPHA: 80, CHROMA: 110 };
+  let video, pg; let camReady=false;
+
+  function setup(){
+    const holder = document.getElementById('sketch-holder');
+    const c = createCanvas(window.innerWidth, window.innerHeight); c.parent(holder); pixelDensity(1);
+    pg = createGraphics(width, height);
+    // 摄像头；若用户拒绝权限，降级为渐变背景
+    try{
+      video = createCapture({video:true, audio:false}, ()=>{ camReady=true; });
+      video.size(640,480); video.hide();
+    }catch(e){ camReady=false; }
+  }
+  function windowResized(){ resizeCanvas(window.innerWidth, window.innerHeight); pg=createGraphics(width,height); }
+
+  function draw(){
+    if(camReady && video){
+      // 画到离屏 pg（镜像 + cover）
+      pg.push(); pg.clear(); pg.translate(pg.width,0); pg.scale(-1,1);
+      const w=pg.width,h=pg.height,vw=video.width,vh=video.height; const s=max(w/vw,h/vh); const dw=vw*s, dh=vh*s; pg.image(video,(w-dw)/2,(h-dh)/2,dw,dh); pg.pop();
+      applyGlitch(pg, GLITCH);
+      image(pg,0,0,width,height);
+      rgbOffset(pg, GLITCH.CHROMA, GLITCH.AMP);
+    }else{
+      // 降级静态背景
+      const g = drawingContext.createLinearGradient(0,0,width,height); g.addColorStop(0,'#0b0b0b'); g.addColorStop(1,'#1a0c0c'); drawingContext.fillStyle=g; noStroke(); rect(0,0,width,height);
+      noFill(); stroke(255,12); for(let i=0;i<height;i+=22) line(0,i,width,i);
+    }
+  }
+  function applyGlitch(g, P){
+    const t = millis()*0.001;
+    for(let i=0;i<P.SLICES;i++){
+      const sh=int(random(6,24)), y=int(random(0,g.height-sh));
+      const dx=int(map(noise(t*3+i*.17),0,1,-P.AMP,P.AMP));
+      g.copy(g,0,y,g.width,sh, dx,y,g.width,sh);
+    }
+    for(let i=0;i<P.BLOCKS;i++){
+      const bw=int(random(40,160)), bh=int(random(14,60));
+      const sx=int(random(0,g.width-bw)), sy=int(random(0,g.height-bh));
+      const dx=int(sx + map(noise(t*2.4+i*.31),0,1,-P.AMP,P.AMP));
+      const dy=int(sy + map(noise(t*2.7+i*.37),0,1,-P.AMP*.6,P.AMP*.6));
+      g.copy(g,sx,sy,bw,bh, dx,dy,bw,bh);
+    }
+    g.noStroke(); g.fill(255,P.SCAN_ALPHA); const gap=P.SCAN_GAP; const off=int((sin(t*5.2)*.5+.5)*gap);
+    for(let y=off; y<g.height; y+=gap){ if(y%(gap*2)===0) g.rect(0,y,g.width,2); }
+  }
+  function rgbOffset(src, alpha, amp){
+    const off=int(map(noise(millis()*0.004),0,1,-amp/2.5, amp/2.5));
+    blendMode(ADD); tint(255,60,60,alpha); image(src, off,0);
+                   tint(60,255,60,alpha); image(src,-off,0);
+                   tint(60,60,255,alpha); image(src, 0,off/2);
+    noTint(); blendMode(BLEND);
+  }
+  </script>
+</body>
+</html>
   }
   if(bHit){
     B.id = bHit; B.type = 'anxiety';
