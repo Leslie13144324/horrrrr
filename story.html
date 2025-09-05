@@ -17,15 +17,21 @@
 const payload = (()=>{ try { return JSON.parse(localStorage.getItem('quizPayload')||'{}'); } catch(e){ return {}; } })();
 const nameValue = payload.name || '参与者';
 const ans = payload.answers || {};
+
+// 命中 A（看 AAx 是否为“是”）
 let aHit=null; for(let i=1;i<=6;i++){ if(ans['AA'+i]==='是'){ aHit='A'+i; break; } }
+// 命中 B（看 Bx 主问题是否为“是”）
 let bHit=null; for(let i=1;i<=6;i++){ if(ans['B'+i]==='是'){ bHit='B'+i; break; } }
+// C1
 const cHit = ans['C1'] ? 'C1' : null;
 
+// 选择故事键（若 B 与 C 同时存在 → 选 B；否则 A 优先，其次 B，其次 C）
 let storyKey=null, storyLabel='';
 if(bHit && cHit){ storyKey=bHit; storyLabel='焦虑原型 '+bHit; }
 else if(aHit){ storyKey=aHit; storyLabel='身份原型 '+aHit; }
 else if(bHit){ storyKey=bHit; storyLabel='焦虑原型 '+bHit; }
 else if(cHit){ storyKey=cHit; storyLabel='伪归类 C1'; }
+else { storyKey='C1'; storyLabel='未归类'; }
 
 /*==================== 故事模板（先留空，A1示例） ====================*/
 const T = {
@@ -61,6 +67,229 @@ function buildStoryParagraphs(){
 /*==================== 故障图映射（15 张） ====================*/
 const GLITCH_MAP = {
   A1:'assets/glitch_A1.gif', A2:'assets/glitch_A2.gif', A3:'assets/glitch_A3.gif', A4:'assets/glitch_A4.gif', A5:'assets/glitch_A5.gif', A6:'assets/glitch_A6.gif',
+  B1:'assets/glitch_B1.gif', B2:'assets/glitch_B2.gif', B3:'assets/glitch_B3.gif', B4:'assets/glitch_B4.gif', B5:'assets/glitch_B5.gif', B6:'assets/glitch_B6.gif',
+  C1:'assets/glitch_C1.gif'
+};
+
+/*==================== 视觉：保持你的版式 ====================*/
+// 可选字体（没有就留空）
+let fontPath=null, WOMAN_FONT_PATH=null;
+// glitch 图与 eye 图
+let USE_GLITCH_IMAGE=true;
+let GLITCH_IMAGE_PATH = GLITCH_MAP[storyKey] || 'assets/glitch_C1.gif';
+let EYE_IMAGE_PATH='assets/eyes.png', EYE_COUNT=7;
+
+// 马赛克/丝带/出血参数（与你一致）
+let RESOLUTION=10, ASCII_UPDATE_INTERVAL=3, MOSAIC_LEVELS=6, MOSAIC_ALPHA=255, MOSAIC_MIN_GRAY=20, MOSAIC_MAX_GRAY=170, BG_DARKEN_ALPHA=45;
+let GLITCH_IMAGE_ALPHA=245, GLITCH_FLASH_PROB=0.015, GLITCH_MIN_FRAMES=15, GLITCH_MAX_FRAMES=30, KEY_OUT_BLACK=true, KEY_BLACK_THRESHOLD=28, KEY_BLACK_SOFTNESS=24;
+let RIGHT_RATIO=0.56, SAFE_TOP=30, SAFE_RIGHT=30, SAFE_BOTTOM=30, GUTTER=24;
+let WOMAN_TEXT=storyLabel||'woman', WOMAN_SIZE=96, WOMAN_LINE_H=1.05, WOMAN_PAD_X=14, WOMAN_PAD_Y=8, WOMAN_COLOR=[255,255,255];
+let PARA_SIZE=16, PARA_LINE_H=1.25, PARA_PAD_X=12, PARA_PAD_Y=8, PARA_GAP=12, BOX_FILL=[210,20,20], BOX_ALPHA=220, TEXT_COLOR=[255,255,255], SHADOW_ALPHA=40, SHADOW_OFFSET=2;
+let TEAR_INTENSITY=2.0, TEAR_SCALE=0.03, TEAR_ALPHA=35, WRAP_WIDTH_RATIO=0.95;
+let RIBBON_BLEED_ENABLED=true, RIBBON_BLEED_DELAY_FRAMES=200, RIBBON_SPAWN_DENSITY=0.00010, RIBBON_DRIP_MAX=350,
+    RIBBON_DRIP_SPEED_MIN=0.05, RIBBON_DRIP_SPEED_MAX=0.2, RIBBON_DRIP_LEN_MIN=80, RIBBON_DRIP_LEN_MAX=380,
+    RIBBON_DRIP_THICK_MIN=7, RIBBON_DRIP_THICK_MAX=8, RIBBON_DRIP_WOBBLE=0.85, RIBBON_DRIP_ALPHA=230;
+
+// 运行变量
+let customFont, womanFont, video, mosaicBuffer, mosaicTick=0, glitchStill=null, glitchKeyed=null, glitchOn=false, glitchFramesLeft=0;
+let rightRect={x:0,y:0,w:0,h:0}, paragraphs=buildStoryParagraphs();
+let ribbonEdges=[], ribbonDrips=[], ribbonBleedStart=0, ribbonBleedStarted=false;
+let eyeImg=null, eyes=[];
+
+// 预加载
+function preload(){
+  try{ if(fontPath) customFont=loadFont(fontPath);}catch(e){}
+  try{ if(WOMAN_FONT_PATH) womanFont=loadFont(WOMAN_FONT_PATH);}catch(e){}
+  if(USE_GLITCH_IMAGE) glitchStill = loadImage(GLITCH_IMAGE_PATH);
+  eyeImg = loadImage(EYE_IMAGE_PATH, ()=>{}, ()=>{ eyeImg=null; });
+}
+
+function setup(){
+  createCanvas(windowWidth, windowHeight);
+  if(customFont) textFont(customFont);
+  textAlign(LEFT,TOP);
+  video = createCapture(VIDEO); video.size(floor(width/RESOLUTION), floor(height/RESOLUTION)); video.hide();
+  mosaicBuffer = createGraphics(width,height); mosaicBuffer.noStroke();
+  if(USE_GLITCH_IMAGE && KEY_OUT_BLACK && glitchStill){ glitchKeyed = keyOutBlack(glitchStill, KEY_BLACK_THRESHOLD, KEY_BLACK_SOFTNESS); }
+  updateLayout(); ribbonBleedStart=frameCount; initEyes();
+}
+
+function draw(){
+  background(0);
+  drawMosaicBackground();
+  if(BG_DARKEN_ALPHA>0){ noStroke(); fill(0,BG_DARKEN_ALPHA); rect(0,0,width,height); }
+  if(!glitchOn) drawEyes();
+  maybeFlashGlitchImage();
+  ribbonEdges.length=0; drawRightColumn(true);
+  if(RIBBON_BLEED_ENABLED) bleedRibbons();
+  drawRightColumn(false);
+}
+
+/* 背景马赛克 */
+function drawMosaicBackground(){
+  if(mosaicTick % ASCII_UPDATE_INTERVAL === 0){
+    mosaicBuffer.clear(); video.loadPixels();
+    for(let y=0;y<video.height;y++){
+      for(let x=0;x<video.width;x++){
+        const idx=(x+y*video.width)*4;
+        const r=video.pixels[idx], g=video.pixels[idx+1], b=video.pixels[idx+2];
+        const bright=(r+g+b)/3;
+        const level=floor(map(bright,0,255,0,MOSAIC_LEVELS));
+        const q=map(level,0,MOSAIC_LEVELS-1,MOSAIC_MIN_GRAY,MOSAIC_MAX_GRAY);
+        mosaicBuffer.fill(q,MOSAIC_ALPHA);
+        mosaicBuffer.rect(x*RESOLUTION,y*RESOLUTION,RESOLUTION,RESOLUTION);
+      }
+    }
+  }
+  mosaicTick++; image(mosaicBuffer,0,0);
+}
+
+/* glitch 闪现（抠黑） */
+function maybeFlashGlitchImage(){
+  if(!USE_GLITCH_IMAGE || !glitchStill) return;
+  if(!glitchOn && random()<GLITCH_FLASH_PROB){ glitchOn=true; glitchFramesLeft=floor(random(GLITCH_MIN_FRAMES,GLITCH_MAX_FRAMES+1)); }
+  if(glitchOn){
+    push(); tint(255,GLITCH_IMAGE_ALPHA); const img=(KEY_OUT_BLACK && glitchKeyed)?glitchKeyed:glitchStill;
+    const cs=min(width,height), is=min(img.width,img.height), sc=cs/is, dw=img.width*sc, dh=img.height*sc, dx=(width-dw)/2, dy=(height-dh)/2;
+    image(img,dx,dy,dw,dh); pop();
+    if(--glitchFramesLeft<=0) glitchOn=false;
+  }
+}
+
+/* 右侧丝带+文字 */
+function drawRightColumn(collect=true){
+  updateLayout();
+  let cursorY=rightRect.y;
+
+  if(womanFont) textFont(womanFont); else textFont('monospace');
+  textSize(WOMAN_SIZE); textLeading(WOMAN_SIZE*WOMAN_LINE_H);
+  const titleLines = wrapLines(WOMAN_TEXT, rightRect.w*WRAP_WIDTH_RATIO, WOMAN_SIZE);
+  cursorY = drawRibbonBlock(titleLines, rightRect.x, cursorY, WOMAN_SIZE, WOMAN_PAD_X, WOMAN_PAD_Y, BOX_FILL, BOX_ALPHA, [255,255,255], collect);
+  cursorY += PARA_GAP*1.2;
+
+  if(customFont) textFont(customFont); else textFont('monospace');
+  textSize(PARA_SIZE); textLeading(PARA_SIZE*PARA_LINE_H);
+  const wrapW = rightRect.w*WRAP_WIDTH_RATIO;
+  for(let p=0;p<paragraphs.length;p++){
+    const lines = wrapLines(paragraphs[p], wrapW, PARA_SIZE);
+    cursorY = drawRibbonBlock(lines, rightRect.x, cursorY, PARA_SIZE, PARA_PAD_X, PARA_PAD_Y, BOX_FILL, BOX_ALPHA, TEXT_COLOR, collect);
+    cursorY += PARA_GAP;
+  }
+}
+function drawRibbonBlock(lines,x,y,fontSize,padX,padY,fillRGB,fillAlpha,textRGB,collectEdges){
+  const widths=lines.map(s=>max(1,textWidth(s.replace(/\s+$/,''))));
+  const boxWs=widths.map(w=>w+padX*2), boxH=fontSize+padY*2;
+  drawRibbonShape(x+SHADOW_OFFSET,y+SHADOW_OFFSET,boxWs,boxH,color(0,SHADOW_ALPHA),null);
+  drawRibbonShape(x,y,boxWs,boxH,color(fillRGB[0],fillRGB[1],fillRGB[2],fillAlpha),{tear:true});
+  fill(textRGB[0],textRGB[1],textRGB[2]); noStroke();
+  for(let i=0;i<lines.length;i++){ const s=lines[i].replace(/\s+$/,''); const ty=y+padY+i*boxH; text(s,x+padX,ty); }
+  if(collectEdges) collectRibbonBottomEdges(x,y,boxWs,boxH);
+  return y+lines.length*boxH;
+}
+function drawRibbonShape(x,y,boxWs,boxH,fillCol,opt={tear:false}){
+  const pts=buildRibbonOutline(x,y,boxWs,boxH);
+  noStroke(); fill(fillCol); beginShape(); for(const p of pts) vertex(p.x,p.y); endShape(CLOSE);
+  if(opt&&opt.tear){ noFill(); stroke(255,TEAR_ALPHA); strokeWeight(2); beginShape();
+    for(const p of pts){ const jx=(noise(p.x*TEAR_SCALE,p.y*TEAR_SCALE)-.5)*2*TEAR_INTENSITY;
+      const jy=(noise(p.x*TEAR_SCALE+999,p.y*TEAR_SCALE+999)-.5)*2*TEAR_INTENSITY; vertex(p.x+jx,p.y+jy); }
+    endShape(CLOSE);
+  }
+}
+function buildRibbonOutline(x,y,boxWs,boxH){
+  const n=boxWs.length, pts=[]; pts.push({x:x,y:y}); pts.push({x:x+boxWs[0],y:y});
+  for(let i=0;i<n;i++){ pts.push({x:x+boxWs[i],y:y+(i+1)*boxH}); if(i<n-1) pts.push({x:x+boxWs[i+1],y:y+(i+1)*boxH}); }
+  pts.push({x:x,y:y+n*boxH}); pts.push({x:x,y:y}); return pts;
+}
+function collectRibbonBottomEdges(x,y,boxWs,boxH){
+  const n=boxWs.length;
+  for(let i=0;i<n-1;i++){ if(boxWs[i]>boxWs[i+1]){ const yEdge=y+(i+1)*boxH, x1=x+boxWs[i+1], x2=x+boxWs[i]; ribbonEdges.push({x1,x2,y:yEdge}); } }
+  const yBottom=y+n*boxH; ribbonEdges.push({x1:x,x2:x+boxWs[n-1],y:yBottom});
+}
+
+/* 出血 */
+function bleedRibbons(){
+  if(!ribbonBleedStarted){ if(frameCount-ribbonBleedStart>=RIBBON_BLEED_DELAY_FRAMES) ribbonBleedStarted=true; else return; }
+  for(const seg of ribbonEdges){
+    const L=max(0,seg.x2-seg.x1); if(L<=0) continue;
+    const expected=L*RIBBON_SPAWN_DENSITY, n=floor(expected), prob=expected-n;
+    let count=n+(random()<prob?1:0); count=min(count,max(0,RIBBON_DRIP_MAX-ribbonDrips.length));
+    for(let k=0;k<count;k++){
+      const x=random(seg.x1+.5, seg.x2-.5), y0=seg.y+1, maxLen=max(0,height-y0-6);
+      const len=constrain(random(RIBBON_DRIP_LEN_MIN,RIBBON_DRIP_LEN_MAX),12,maxLen);
+      ribbonDrips.push({ x,y0, head:0, len, speed:random(RIBBON_DRIP_SPEED_MIN,RIBBON_DRIP_SPEED_MAX),
+        thick:random(RIBBON_DRIP_THICK_MIN,RIBBON_DRIP_THICK_MAX), seed:random(1000) });
+      if(ribbonDrips.length>=RIBBON_DRIP_MAX) break;
+    }
+    if(ribbonDrips.length>=RIBBON_DRIP_MAX) break;
+  }
+  noStroke();
+  for(let i=ribbonDrips.length-1;i>=0;i--){
+    const d=ribbonDrips[i]; d.speed*=1.01; d.head+=d.speed;
+    const segH=3;
+    for(let yy=0; yy<d.head && yy<d.len; yy+=segH){
+      const t=yy/d.len, w=lerp(d.thick,d.thick*0.65,t);
+      const wob=(noise(d.seed+yy*0.05+frameCount*0.02)-.5)*2*RIBBON_DRIP_WOBBLE;
+      fill(BOX_FILL[0],BOX_FILL[1],BOX_FILL[2],RIBBON_DRIP_ALPHA); rect(d.x+wob-w/2, d.y0+yy, w, segH);
+    }
+    const wobHead=(noise(d.seed+d.head*0.05+frameCount*0.02)-.5)*2*RIBBON_DRIP_WOBBLE;
+    fill(BOX_FILL[0],BOX_FILL[1],BOX_FILL[2],min(255,RIBBON_DRIP_ALPHA+10)); ellipse(d.x+wobHead, d.y0+d.head, d.thick*1.2, d.thick*1.2);
+    if(d.head>d.len) ribbonDrips.splice(i,1);
+  }
+}
+
+/* 工具 */
+function wrapLines(textStr, maxW, fontSize){
+  const tokens=textStr.split(/(\s+)/); let lines=['']; textSize(fontSize);
+  for(const tk of tokens){ const trial=lines[lines.length-1]+tk;
+    if(textWidth(trial)<=maxW || lines[lines.length-1]===''){ lines[lines.length-1]=trial; }
+    else { lines.push(tk.trimStart()); } }
+  return lines.map(s=>s.replace(/\s+$/,''));
+}
+function updateLayout(){
+  const rightX=floor(width*RIGHT_RATIO)+GUTTER, rightW=max(220,width-rightX-SAFE_RIGHT), rightY=SAFE_TOP, rightH=height-SAFE_TOP-SAFE_BOTTOM;
+  rightRect={x:rightX,y:rightY,w:rightW,h:rightH};
+}
+function keyOutBlack(srcImg, threshold=28, softness=24){
+  let keyed=createImage(srcImg.width, srcImg.height);
+  keyed.copy(srcImg,0,0,srcImg.width,srcImg.height,0,0,srcImg.width,srcImg.height);
+  keyed.loadPixels();
+  const n=keyed.width*keyed.height;
+  for(let i=0;i<n;i++){
+    const idx=i*4, r=keyed.pixels[idx], g=keyed.pixels[idx+1], b=keyed.pixels[idx+2], a0=keyed.pixels[idx+3], bright=(r+g+b)/3;
+    if(bright<=threshold) keyed.pixels[idx+3]=0;
+    else if(softness>0 && bright<threshold+softness){ const t=(bright-threshold)/softness; keyed.pixels[idx+3]=a0*t; }
+  }
+  keyed.updatePixels(); return keyed;
+}
+function windowResized(){
+  resizeCanvas(windowWidth, windowHeight);
+  mosaicBuffer=createGraphics(width,height); mosaicBuffer.noStroke();
+  if(video) video.size(floor(width/RESOLUTION), floor(height/RESOLUTION));
+  updateLayout(); initEyes();
+}
+
+/* 眼睛层 */
+function initEyes(){
+  eyes=[]; if(!eyeImg) return;
+  for(let i=0;i<EYE_COUNT;i++){
+    const margin=40, x=random(margin,width-margin), y=random(margin,height-margin);
+    const targetW = random(90,140)*(width/1280 * 0.9 + 0.55);
+    const targetH = targetW * (eyeImg.height/eyeImg.width);
+    eyes.push({ baseX:x, baseY:y, w:targetW, h:targetH, amp:random(4,10), spd:random(0.015,0.035), phase:random(TWO_PI), rotAmp:random(-0.06,0.06)});
+  }
+}
+function drawEyes(){
+  if(!eyeImg || eyes.length===0) return;
+  push(); imageMode(CENTER);
+  for(const e of eyes){
+    const dy=sin(frameCount*e.spd+e.phase)*e.amp, dx=cos(frameCount*e.spd*0.8+e.phase)*e.amp*0.35, rot=sin(frameCount*e.spd*0.6+e.phase)*e.rotAmp;
+    push(); translate(e.baseX+dx, e.baseY+dy); rotate(rot); image(eyeImg,0,0,e.w,e.h); pop();
+  }
+  pop();
+}
+</script>
+</body>
+</html>
   B1:'assets/glitch_B1.gif', B2:'assets/glitch_B2.gif', B3:'assets/glitch_B3.gif', B4:'assets/glitch_B4.gif', B5:'assets/glitch_B5.gif', B6:'assets/glitch_B6.gif',
   C1:'assets/glitch_C1.gif'
 };
