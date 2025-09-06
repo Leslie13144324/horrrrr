@@ -12,126 +12,100 @@
 </head>
 <body>
 <script>
-/*==================== 读取答题结果 → 选故事键 ====================*/
-const payload=(()=>{try{return JSON.parse(localStorage.getItem('quizPayload')||'{}');}catch(e){return {};}})();
-const ans=payload.answers||{};
-let aHit=null; for(let i=1;i<=6;i++){if(ans['AA'+i]==='是'){aHit='A'+i; break;}}
-let bHit=null; for(let i=1;i<=6;i++){if(ans['B'+i]==='是'){bHit='B'+i; break;}}
-const cHit=ans['C1']?'C1':null;
+/*==================== 读取答题结果 ====================*/
+const payload = (()=>{ try{ return JSON.parse(localStorage.getItem('quizPayload')||'{}'); }catch(e){ return {}; } })();
+const ans = payload.answers || {};
+let aHit=null; for(let i=1;i<=6;i++){ if(ans['AA'+i]==='是'){ aHit='A'+i; break; } }
+let bHit=null; for(let i=1;i<=6;i++){ if(ans['B'+i]==='是'){ bHit='B'+i; break; } }
+const cHit = ans['C1'] ? 'C1' : null;
+let storyKey=null;
+if(bHit && cHit){ storyKey=bHit; }
+else if(aHit){ storyKey=aHit; }
+else if(bHit){ storyKey=bHit; }
+else if(cHit){ storyKey=cHit; }
 
-let storyKey=null, storyLabel='';
-if(bHit && cHit){storyKey=bHit; storyLabel='焦虑原型 '+bHit;}
-else if(aHit){storyKey=aHit; storyLabel='身份原型 '+aHit;}
-else if(bHit){storyKey=bHit; storyLabel='焦虑原型 '+bHit;}
-else if(cHit){storyKey=cHit; storyLabel='伪归类 C1';}
-
-/*==================== 故事模板（示例 A1 完整，其它占位） ====================*/
 /*==================== 故事模板（含标题+正文） ====================*/
 const STORIES = {
   A1: {
     title: "那个女人",
-    text: `她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，[A1a特征]，[A1c特征]。
-她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。[A1b特征]。
+    text: `她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。领导很喜欢她，说她“像我们这行该有的样子”。
+她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，[A1a特征]，[A1c特征]。她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。[A1b特征]。
 有天晚上我们加班，办公室只剩我和她。我走过去想问她要不要一起走，结果看到她正在镜子前低头调整什么。不是妆容，不是衣领——是脸。
 她把脸从脸上慢慢剥下来，从额头撕开，再一寸一寸地卷到下巴。里面是空的。只有白白的塑料架子，像模特头。
 她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`
   },
-  A2: { title: "（A2 故事名字）", text: `` },
-  A3: { title: "（A3 故事名字）", text: `` },
-  A4: { title: "（A4 故事名字）", text: `` },
-  A5: { title: "（A5 故事名字）", text: `` },
-  A6: { title: "（A6 故事名字）", text: `` },
-  B1: { title: "（B1 故事名字）", text: `` },
-  B2: { title: "（B2 故事名字）", text: `` },
-  B3: { title: "（B3 故事名字）", text: `` },
-  B4: { title: "（B4 故事名字）", text: `` },
-  B5: { title: "（B5 故事名字）", text: `` },
-  B6: { title: "（B6 故事名字）", text: `` },
-  C1: { title: "（C1 故事名字）", text: `` }
+
+  // 其他 A2~A6 / B1~B6 / C1 可按需补充
 };
 
-/*==================== 根据答案选故事 ====================*/
+/*==================== 构造段落（执行占位符替换） ====================*/
 function buildStoryParagraphs(){
   const story = STORIES[storyKey];
   if(!story) return ['（没有找到对应故事模板）'];
-
   let txt = story.text;
 
-  if(storyKey.startsWith('A')){
-    txt = txt.replaceAll(`[${storyKey}a特征]`, ans[storyKey+'a']||'')
-             .replaceAll(`[${storyKey}b特征]`, ans[storyKey+'b']||'')
-             .replaceAll(`[${storyKey}c特征]`, ans[storyKey+'c']||'');
-  }else if(storyKey.startsWith('B')){
-    txt = txt.replaceAll(`[${storyKey}a]`, ans[storyKey+'a']||'')
-             .replaceAll(`[${storyKey}b]`, ans[storyKey+'b']||'')
-             .replaceAll(`[${storyKey}c]`, ans[storyKey+'c']||'');
-  }else if(storyKey==='C1'){
-    txt = txt.replaceAll('[C1选项]', ans['C1']||'');
+  if(storyKey && storyKey.startsWith('A')){
+    // 直接用答题页写入的 fill 文本（字符串）
+    txt = txt.replaceAll('[A1a特征]', ans['A1a']||'')
+             .replaceAll('[A1b特征]', ans['A1b']||'')
+             .replaceAll('[A1c特征]', ans['A1c']||'');
   }
+  // 如需支持 B 类或 C1 的占位符，在此追加对应 replaceAll
 
   return txt.split('\n').map(s=>s.trim()).filter(Boolean);
 }
-
-/*==================== 设置标题文本 ====================*/
-let WOMAN_TEXT = (STORIES[storyKey]?.title) || '未命名故事';
 let paragraphs = buildStoryParagraphs();
 
+/*==================== 标题文本 ====================*/
+let WOMAN_TEXT = (STORIES[storyKey]?.title) || '未命名故事';
 
-/*==================== 视觉资源 ====================*/
+/*==================== 视觉资源（保留你之前的） ====================*/
 const GLITCH_MAP={
   A1:'assets/glitch_A1.gif',A2:'assets/glitch_A2.gif',A3:'assets/glitch_A3.gif',A4:'assets/glitch_A4.gif',A5:'assets/glitch_A5.gif',A6:'assets/glitch_A6.gif',
   B1:'assets/glitch_B1.gif',B2:'assets/glitch_B2.gif',B3:'assets/glitch_B3.gif',B4:'assets/glitch_B4.gif',B5:'assets/glitch_B5.gif',B6:'assets/glitch_B6.gif',
   C1:'assets/glitch_C1.gif'
 };
 const EYE_IMAGE_PATH='assets/eyes.png';
-const GLITCH_IMAGE_PATH=GLITCH_MAP[storyKey]||null;
+const GLITCH_IMAGE_PATH = GLITCH_MAP[storyKey] || null;
 
-/*==================== 右栏与文本参数 ====================*/
+/*==================== 布局、绘制（与你之前一致，省略注释） ====================*/
 const RIGHT_RATIO=0.56, SAFE_TOP=20, SAFE_RIGHT=30, SAFE_BOTTOM=24, GUTTER=24;
-const WRAP_WIDTH_RATIO=0.92;     // 略收窄，避免右侧贴边被裁
-
-let WOMAN_TEXT = storyLabel || '身份原型 A1';
+const WRAP_WIDTH_RATIO=0.92;
 const BASE={title:96, para:18, padX:10, padY:4, gap:12};
 const MIN ={title:24, para:12, padX:6,  padY:2, gap:8 };
-const LEAD={title:1.05, para:0.98}; // 段内更紧，确保“红框间无缝”
+const LEAD={title:1.05, para:0.98};
 let S={...BASE};
-
 const BOX_FILL=[210,20,20], BOX_ALPHA=220, TEXT_RGB=[255,255,255];
 const SHADOW_ALPHA=40, SHADOW_OFFSET=2;
 const TEAR_INTENSITY=2.0, TEAR_SCALE=0.03, TEAR_ALPHA=35;
-
 let rightRect={x:0,y:0,w:0,h:0};
 
-/*==================== 运行变量 ====================*/
 let video,mosaicBuffer,mosaicTick=0;
 let eyesImg=null, eyes=[]; const EYE_COUNT=7;
 let glitchStill=null,glitchKeyed=null,glitchOn=false,glitchFrames=0;
 const GLITCH={ALPHA:245, PROB:0.015, MIN:12, MAX:24, KEY:true, TH:28, SOFT:24};
 
 function preload(){
-  if(GLITCH_IMAGE_PATH){glitchStill=loadImage(GLITCH_IMAGE_PATH,()=>{},()=>glitchStill=null);}
-  eyesImg=loadImage(EYE_IMAGE_PATH,()=>{},()=>{eyesImg=null;});
+  if(GLITCH_IMAGE_PATH){ glitchStill=loadImage(GLITCH_IMAGE_PATH,()=>{},()=>glitchStill=null); }
+  eyesImg = loadImage(EYE_IMAGE_PATH,()=>{},()=>{ eyesImg=null; });
 }
 function setup(){
-  createCanvas(windowWidth,windowHeight); textAlign(LEFT,TOP);
-  video=createCapture(VIDEO); video.size(floor(width/10),floor(height/10)); video.hide();
+  createCanvas(windowWidth, windowHeight); textAlign(LEFT,TOP);
+  video=createCapture(VIDEO); video.size(floor(width/10), floor(height/10)); video.hide();
   mosaicBuffer=createGraphics(width,height); mosaicBuffer.noStroke();
   updateLayout(); autosizeToFit(); initEyes();
 }
 function windowResized(){
-  resizeCanvas(windowWidth,windowHeight);
+  resizeCanvas(windowWidth, windowHeight);
   mosaicBuffer=createGraphics(width,height); mosaicBuffer.noStroke();
   if(video) video.size(floor(width/10),floor(height/10));
   updateLayout(); autosizeToFit(); initEyes();
 }
-
 function draw(){
   background(0); drawMosaicBackground(); darkenBG(45);
   maybeFlashGlitch(); if(!glitchOn) drawEyes();
   ribbonEdges.length=0; drawRightColumn(true); bleedRibbons(); drawRightColumn(false);
 }
-
-/*==================== 背景像素化 ====================*/
 function drawMosaicBackground(){
   if(mosaicTick%3===0){
     mosaicBuffer.clear(); video.loadPixels();
@@ -148,13 +122,12 @@ function drawMosaicBackground(){
 }
 function darkenBG(a){ noStroke(); fill(0,a); rect(0,0,width,height); }
 
-/*==================== glitch：闪现时刷新小眼睛 ====================*/
 function maybeFlashGlitch(){
   if(!glitchStill) return;
-  if(!glitchOn && random()<GLITCH.PROB){glitchOn=true;glitchFrames=int(random(GLITCH.MIN,GLITCH.MAX+1));initEyes();}
+  if(!glitchOn && random()<GLITCH.PROB){ glitchOn=true; glitchFrames=int(random(GLITCH.MIN,GLITCH.MAX+1)); initEyes(); }
   if(glitchOn){
     push(); tint(255,GLITCH.ALPHA);
-    const img=(GLITCH.KEY?(glitchKeyed||(glitchKeyed=keyOutBlack(glitchStill,GLITCH.TH,GLITCH.SOFT))):glitchStill);
+    const img=(GLITCH.KEY? (glitchKeyed||(glitchKeyed=keyOutBlack(glitchStill,GLITCH.TH,GLITCH.SOFT))) : glitchStill);
     const cs=min(width,height), sc=cs/min(img.width,img.height), dw=img.width*sc, dh=img.height*sc;
     image(img,(width-dw)/2,(height-dh)/2,dw,dh); pop();
     if(--glitchFrames<=0) glitchOn=false;
@@ -163,21 +136,19 @@ function maybeFlashGlitch(){
 function keyOutBlack(src,thr=28,soft=24){
   const out=createImage(src.width,src.height); out.copy(src,0,0,src.width,src.height,0,0,src.width,src.height);
   out.loadPixels(); const n=out.width*out.height;
-  for(let i=0;i<n;i++){const idx=i*4,r=out.pixels[idx],g=out.pixels[idx+1],b=out.pixels[idx+2],a0=out.pixels[idx+3],br=(r+g+b)/3;
-    out.pixels[idx+3]=(br<=thr)?0:(br<thr+soft?a0*((br-thr)/soft):a0);}
-  out.updatePixels(); return out;
+  for(let i=0;i<n;i++){ const idx=i*4, r=out.pixels[idx],g=out.pixels[idx+1],b=out.pixels[idx+2],a0=out.pixels[idx+3], br=(r+g+b)/3;
+    out.pixels[idx+3]=(br<=thr)?0:(br<thr+soft? a0*((br-thr)/soft) : a0);
+  } out.updatePixels(); return out;
 }
-
-/*==================== 小眼睛 ====================*/
 function initEyes(){
   eyes=[]; if(!eyesImg) return;
   for(let i=0;i<EYE_COUNT;i++){
-    const m=40,x=random(m,width-m),y=random(m,height-m),w=random(90,140)*(width/1280*0.9+0.55),h=w*(eyesImg.height/eyesImg.width);
-    eyes.push({x,y,w,h,amp:random(4,10),spd:random(0.015,0.035),ph:random(TWO_PI),rotAmp:random(-0.06,0.06)});
+    const m=40, x=random(m,width-m), y=random(m,height-m), w=random(90,140)*(width/1280*0.9+0.55), h=w*(eyesImg.height/eyesImg.width);
+    eyes.push({x,y,w,h, amp:random(4,10), spd:random(0.015,0.035), ph:random(TWO_PI), rotAmp:random(-0.06,0.06)});
   }
 }
 function drawEyes(){
-  if(!eyesImg||!eyes.length) return;
+  if(!eyesImg || !eyes.length) return;
   imageMode(CENTER);
   for(const e of eyes){
     const dy=sin(frameCount*e.spd+e.ph)*e.amp, dx=cos(frameCount*e.spd*0.8+e.ph)*e.amp*0.35;
@@ -186,21 +157,17 @@ function drawEyes(){
   imageMode(CORNER);
 }
 
-/*==================== 右栏（段内零缝隙；段间留距） ====================*/
+/*==================== 文本布局（右栏） ====================*/
 function updateLayout(){
   const rx=floor(width*RIGHT_RATIO)+GUTTER, rw=max(220,width-rx-SAFE_RIGHT);
   rightRect={x:rx,y:SAFE_TOP,w:rw,h:height-SAFE_TOP-SAFE_BOTTOM};
 }
-
-/* —— 强化版换行：若整句含中文或无空格，逐“字符”测宽换行；否则按单词 —— */
 function wrapLines(s,maxW,fontSize){
   textSize(fontSize);
   const hasSpace=/\s/.test(s);
   const hasCJK=/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/.test(s);
   let lines=[''];
-
   if(hasCJK || !hasSpace){
-    // 逐字符
     for(const ch of Array.from(s)){
       const cur=lines[lines.length-1];
       const candidate=cur+ch;
@@ -208,7 +175,6 @@ function wrapLines(s,maxW,fontSize){
       else lines.push(ch);
     }
   }else{
-    // 按词（保留空格）
     for(const tk of s.split(/(\s+)/)){
       const cur=lines[lines.length-1];
       const candidate=cur+tk;
@@ -218,8 +184,6 @@ function wrapLines(s,maxW,fontSize){
   }
   return lines.map(v=>v.replace(/\s+$/,''));
 }
-
-/* —— 自适应压缩：保证所有块总高度 ≤ 右栏可用高度 —— */
 function autosizeToFit(){
   S={...BASE};
   for(let it=0; it<40; it++){
@@ -235,31 +199,23 @@ function autosizeToFit(){
 }
 function estimateHeight(sz){
   const w=rightRect.w*WRAP_WIDTH_RATIO;
-  // 标题
   const tLines=wrapLines(WOMAN_TEXT,w,sz.title);
   const tBoxH=(sz.title*LEAD.title+2*sz.padY)*tLines.length;
   let h=tBoxH+sz.gap*1.2;
-  // 段落
   for(const p of paragraphs){
     const lines=wrapLines(p,w,sz.para);
-    const boxH=(sz.para*LEAD.para+2*sz.padY)*lines.length; // 段内无缝
-    h+=boxH+sz.gap;                                      // 段与段留缝
+    const boxH=(sz.para*LEAD.para+2*sz.padY)*lines.length;
+    h+=boxH+sz.gap;
   }
   return h;
 }
-
-/* —— 拼“阶梯多边形”成整块丝带 —— */
-let ribbonEdges=[], dripStart=0, dripStarted=false;
+let ribbonEdges=[];
 function drawRightColumn(collect=true){
   const w=rightRect.w*WRAP_WIDTH_RATIO; let y=rightRect.y;
-
-  // 标题
   textFont('monospace'); textSize(S.title); textLeading(S.title*LEAD.title);
   const tLines=wrapLines(WOMAN_TEXT,w,S.title);
   y=drawRibbonBlock(tLines,rightRect.x,y,S.title*LEAD.title,S.padX,S.padY,BOX_FILL,BOX_ALPHA,[255,255,255],collect);
   y+=S.gap*1.2;
-
-  // 正文
   textFont('monospace'); textSize(S.para); textLeading(S.para*LEAD.para);
   for(const p of paragraphs){
     const lines=wrapLines(p,w,S.para);
@@ -270,17 +226,12 @@ function drawRightColumn(collect=true){
 function drawRibbonBlock(lines,x,y,leading,padX,padY,fillRGB,fillAlpha,textRGB,collectEdges){
   const boxH=leading+padY*2;
   const widths=lines.map(s=>max(1,textWidth(s)));
-  const maxW=rightRect.w*WRAP_WIDTH_RATIO;                           // 兜底限制
-  const boxWs=widths.map(w=>min(w+padX*2, maxW));                    // 永不超出
-
-  // 阴影 + 主体（阶梯）
+  const maxW=rightRect.w*WRAP_WIDTH_RATIO;
+  const boxWs=widths.map(w=>min(w+padX*2, maxW));
   drawRibbonShape(x+SHADOW_OFFSET,y+SHADOW_OFFSET,boxWs,boxH,color(0,SHADOW_ALPHA),null);
   drawRibbonShape(x,y,boxWs,boxH,color(fillRGB[0],fillRGB[1],fillRGB[2],fillAlpha),{tear:true});
-
-  // 文本（逐行）
   fill(textRGB[0],textRGB[1],textRGB[2]); noStroke();
   for(let i=0;i<lines.length;i++){ const ty=y+i*boxH+padY; text(lines[i], x+padX, ty); }
-
   if(collectEdges) collectRibbonBottomEdges(x,y,boxWs,boxH);
   return y+lines.length*boxH;
 }
@@ -300,7 +251,7 @@ function drawRibbonShape(x,y,boxWs,boxH,fillCol,opt={tear:false}){
 }
 function buildRibbonOutline(x,y,boxWs,boxH){
   const n=boxWs.length, pts=[]; pts.push({x:x,y:y}); pts.push({x:x+boxWs[0],y:y});
-  for(let i=0;i<n;i++){pts.push({x:x+boxWs[i],y:y+(i+1)*boxH}); if(i<n-1) pts.push({x:x+boxWs[i+1],y:y+(i+1)*boxH});}
+  for(let i=0;i<n;i++){ pts.push({x:x+boxWs[i],y:y+(i+1)*boxH}); if(i<n-1) pts.push({x:x+boxWs[i+1],y:y+(i+1)*boxH}); }
   pts.push({x:x,y:y+n*boxH}); pts.push({x:x,y:y}); return pts;
 }
 function collectRibbonBottomEdges(x,y,boxWs,boxH){
@@ -309,12 +260,12 @@ function collectRibbonBottomEdges(x,y,boxWs,boxH){
   ribbonEdges.push({x1:x,x2:x+boxWs[n-1],y:y+n*boxH});
 }
 
-/*==================== 出血 ====================*/
+/*==================== 出血（保留） ====================*/
 const R={ENABLED:true,DELAY:160,DENSITY:0.0001,MAX:320,VMIN:0.05,VMAX:0.18,LEN_MIN:80,LEN_MAX:360,THICK_MIN:6,THICK_MAX:8,WOBBLE:0.85,ALPHA:230};
 let ribbonDrips=[];
 function bleedRibbons(){
   if(!R.ENABLED) return;
-  if(!this._started){ if(frameCount-R.DELAY>0){this._started=true;} else return; }
+  if(!this._started){ if(frameCount-R.DELAY>0){ this._started=true; } else return; }
   for(const seg of ribbonEdges){
     const L=max(0,seg.x2-seg.x1); if(L<=0) continue;
     const expected=L*R.DENSITY, n=floor(expected), prob=expected-n;
