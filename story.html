@@ -158,25 +158,46 @@ function windowResized(){
   updateLayout(); initEyes();
 }
 function autosizeParagraphs(){
-  textSize(WOMAN_SIZE); textLeading(WOMAN_SIZE*WOMAN_LINE_H);
-  const titleLines = wrapLines(WOMAN_TEXT, rightRect.w*WRAP_WIDTH_RATIO, WOMAN_SIZE);
-  const titleH = (WOMAN_PAD_Y*2) + titleLines.length*(WOMAN_SIZE + WOMAN_PAD_Y*2);
+  // 初始字号
+  let titleSize = WOMAN_SIZE;
+  let paraSize  = PARA_SIZE;
+  let gap       = PARA_GAP;
 
-  textSize(PARA_SIZE); textLeading(PARA_SIZE*PARA_LINE_H);
-  const wrapW = rightRect.w*WRAP_WIDTH_RATIO;
-  let paraTotalH = 0;
-  for(const p of paragraphs){
-    const lines = wrapLines(p, wrapW, PARA_SIZE);
-    const boxH = PARA_PAD_Y*2 + lines.length*(PARA_SIZE + PARA_PAD_Y*2);
-    paraTotalH += boxH + PARA_GAP;
+  function totalHeight(ts, ps, gp){
+    // 标题
+    textSize(ts); textLeading(ts*WOMAN_LINE_H);
+    const titleLines = wrapLines(WOMAN_TEXT, rightRect.w*WRAP_WIDTH_RATIO, ts);
+    const titleH = WOMAN_PAD_Y*2 + titleLines.length*(ts + WOMAN_PAD_Y*2);
+
+    // 段落
+    textSize(ps); textLeading(ps*PARA_LINE_H);
+    const wrapW = rightRect.w*WRAP_WIDTH_RATIO;
+    let paraTotalH=0;
+    for(const p of paragraphs){
+      const lines = wrapLines(p, wrapW, ps);
+      const boxH  = PARA_PAD_Y*2 + lines.length*(ps + PARA_PAD_Y*2);
+      paraTotalH += boxH + gp;
+    }
+    return titleH + paraTotalH;
   }
-  const total = titleH + paraTotalH;
-  if (total > rightRect.h){
-    const ratio = rightRect.h / total;
-    const newPara = max(12, floor(PARA_SIZE*ratio*0.98));
-    if (newPara < PARA_SIZE){ PARA_SIZE = newPara; }
+
+  // 计算总高
+  let total = totalHeight(titleSize, paraSize, gap);
+  const maxH = rightRect.h;
+
+  if(total > maxH){
+    // 比例缩小所有字号和间距
+    const ratio = maxH / total;
+    titleSize = max(32, floor(titleSize*ratio*0.95));
+    paraSize  = max(12, floor(paraSize*ratio*0.95));
+    gap       = max(6,  floor(gap*ratio*0.95));
   }
+
+  WOMAN_SIZE = titleSize;
+  PARA_SIZE  = paraSize;
+  PARA_GAP   = gap;
 }
+
 
 /* ====================== 红丝带 ====================== */
 function drawRightColumn(){
