@@ -2,52 +2,32 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>如何被写进恐怖故事里 · 结果页（诊断版）</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>如何被写进恐怖故事里 · 结果页</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
   <style>
-    html, body { margin:0; padding:0; height:100%; background:#000; color:#ffecec;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-    canvas { display:block; }
-    #diag{position:fixed;left:10px;top:10px;z-index:9;background:rgba(0,0,0,.6);
-      color:#0f0;border:1px solid #0f0;border-radius:6px;font-size:12px;line-height:1.3;
-      padding:8px 10px;max-width:48vw;white-space:pre-wrap;}
+    html,body{margin:0;padding:0;height:100%;background:#000;color:#ffecec;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    canvas{display:block}
+    /* 左上角小诊断面板（?diag=1 开启） */
+    .diag{position:fixed;left:8px;top:8px;z-index:9;background:rgba(0,0,0,.7);border:1px solid rgba(0,255,0,.35);
+      color:#d9ffd9;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:6px 8px;border-radius:6px;white-space:pre}
+    .ok::before{content:"✓ ";color:#9f9}
+    .bad::before{content:"✗ ";color:#f88}
   </style>
 </head>
 <body>
-<div id="diag">loading…</div>
-
-<!-- 故事模板（确保是合法 JSON） -->
-<script type="application/json" id="story-templates">
-{
-  "A1": "她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。\\n领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。\\n有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，[A1a特征]，[A1c特征]。\\n她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。[A1b特征]。\\n有天晚上我们加班，办公室只剩我和她。我走过去想问她要不要一起走，结果看到她正在镜子前低头调整什么。不是妆容，不是衣领——是脸。\\n她把脸从脸上慢慢剥下来，从额头撕开，再一寸一寸地卷到下巴。里面是空的。只有白白的塑料架子，像模特头。\\n她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。",
-  "A2":"", "A3":"", "A4":"", "A5":"", "A6":"",
-  "B1":"", "B2":"", "B3":"", "B4":"", "B5":"", "B6":"",
-  "C1":""
-}
-</script>
-
 <script>
-/* ========== 诊断输出 ========== */
-const diagEl = document.getElementById('diag');
-const DIAG = {
-  lines: [],
-  log(s){ this.lines.push(String(s)); diagEl.textContent = this.lines.join('\n'); },
-  ok(k){ this.log('✔ ' + k); },
-  err(k,e){ this.log('✖ ' + k + ': ' + (e && e.message ? e.message : e)); }
-};
+/* ================== URL 参数 ================== */
+const QS = new URLSearchParams(location.search);
+const DIAG_ON = QS.has('diag');          // ?diag=1 显示诊断
+const LITE    = QS.has('lite');          // ?lite=1 轻量模式
 
-/* ========== 读取答题结果，选故事键 ========== */
-let payload = {};
-try{
-  payload = JSON.parse(localStorage.getItem('quizPayload')||'{}');
-  DIAG.ok('localStorage quizPayload 读取成功');
-}catch(e){ DIAG.err('quizPayload 解析失败', e); }
-
-const ans = (payload && payload.answers) || {};
-const nameValue = payload && payload.name ? payload.name : '参与者';
-
+/* ================== 读取答题结果 ================== */
+const payload = (()=>{ try { const s = localStorage.getItem('quizPayload'); return s? JSON.parse(s):{}; } catch(e){ return {}; } })();
+const nameValue = payload.name || '参与者';
+const ans = payload.answers || {};
+/* 命中规则：若 B 和 C 同时存在，用 B；否则 A 优先，其次 B，其次 C（与之前一致）*/
 let aHit=null; for(let i=1;i<=6;i++){ if(ans['AA'+i]==='是'){ aHit='A'+i; break; } }
 let bHit=null; for(let i=1;i<=6;i++){ if(ans['B'+i]==='是'){ bHit='B'+i; break; } }
 const cHit = ans['C1'] ? 'C1' : null;
@@ -57,241 +37,385 @@ if(bHit && cHit){ storyKey=bHit; storyLabel='焦虑原型 '+bHit; }
 else if(aHit){ storyKey=aHit; storyLabel='身份原型 '+aHit; }
 else if(bHit){ storyKey=bHit; storyLabel='焦虑原型 '+bHit; }
 else if(cHit){ storyKey=cHit; storyLabel='伪归类 C1'; }
-else { storyKey='A1'; storyLabel='身份原型 A1（默认）'; DIAG.log('ℹ 未命中任何键，使用 A1 默认'); }
 
-/* ========== 模板文本 ========= */
-let paragraphs = [];
+/* ================== 故事模板（示例与占位） ==================
+   —— 你可以把 15 篇完整文本贴进来；这里只放 A1 示例，其余给空字符串占位 —— */
+const T = {
+  A1: `她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。
+领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。
+有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，[A1a特征]，[A1c特征]。
+她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。[A1b特征]。
+有天晚上我们加班，办公室只剩我和她。我走过去想问她要不要一起走，结果看到她正在镜子前低头调整什么。不是妆容，不是衣领——是脸。
+她把脸从脸上慢慢剥下来，从额头撕开，再一寸一寸地卷到下巴。里面是空的。只有白白的塑料架子，像模特头。
+她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`,
+  A2:'',A3:'',A4:'',A5:'',A6:'',
+  B1:'',B2:'',B3:'',B4:'',B5:'',B6:'',
+  C1:''
+};
+
 function buildStoryParagraphs(){
-  try{
-    const el = document.getElementById('story-templates');
-    if(!el){ DIAG.err('未找到 story-templates'); return ['（缺少 story-templates）']; }
-    const T = JSON.parse(el.textContent||'{}');
-    if(!T[storyKey]){ DIAG.log('ℹ 模板缺少 '+storyKey+'，使用占位'); return ['（缺少 '+storyKey+' 模板）']; }
-    let txt=T[storyKey]||'';
-    if(storyKey.startsWith('A')){
-      txt = txt.replaceAll(`[${storyKey}a特征]`, ans[storyKey+'a']||'')
-               .replaceAll(`[${storyKey}b特征]`, ans[storyKey+'b']||'')
-               .replaceAll(`[${storyKey}c特征]`, ans[storyKey+'c']||'');
-    }else if(storyKey.startsWith('B')){
-      txt = txt.replaceAll(`[${storyKey}a]`, ans[storyKey+'a']||'')
-               .replaceAll(`[${storyKey}b]`, ans[storyKey+'b']||'')
-               .replaceAll(`[${storyKey}c]`, ans[storyKey+'c']||'');
-    }else if(storyKey==='C1'){
-      txt = (T[storyKey]||'').replaceAll('[C1选项]', ans['C1']||'');
-    }
-    DIAG.ok('故事模板解析成功: '+storyKey);
-    return (txt.split('\n').map(s=>s.trim()).filter(Boolean).length? txt.split('\n').map(s=>s.trim()) : ['（模板为空）']);
-  }catch(e){
-    DIAG.err('故事模板 JSON 解析失败', e);
-    return ['（模板 JSON 解析失败）'];
+  let key=storyKey;
+  if(!key || !T[key]) return ['（没有找到对应故事模板，请补充 15 篇文本或返回重试）'];
+
+  let txt=T[key];
+  if(key.startsWith('A')){
+    txt = txt.replaceAll(`[${key}a特征]`, ans[key+'a']||'')
+             .replaceAll(`[${key}b特征]`, ans[key+'b']||'')
+             .replaceAll(`[${key}c特征]`, ans[key+'c']||'');
+  }else if(key.startsWith('B')){
+    txt = txt.replaceAll(`[${key}a]`, ans[key+'a']||'')
+             .replaceAll(`[${key}b]`, ans[key+'b']||'')
+             .replaceAll(`[${key}c]`, ans[key+'c']||'');
+  }else if(key==='C1'){
+    txt = (T[key]||'').replaceAll('[C1选项]', ans['C1']||'');
   }
+  return txt.split('\n').map(s=>s.trim()).filter(Boolean);
 }
 
-/* ========== 视觉参数（与之前一致） ========== */
+/* ================== 资源映射与常量 ================== */
+// 15 张 glitch 素材（放在 /assets/ 下；文件名可替换）
 const GLITCH_MAP = {
-  A1:'assets/glitch_A1.gif', A2:'assets/glitch_A2.gif', A3:'assets/glitch_A3.gif',
-  A4:'assets/glitch_A4.gif', A5:'assets/glitch_A5.gif', A6:'assets/glitch_A6.gif',
-  B1:'assets/glitch_B1.gif', B2:'assets/glitch_B2.gif', B3:'assets/glitch_B3.gif',
-  B4:'assets/glitch_B4.gif', B5:'assets/glitch_B5.gif', B6:'assets/glitch_B6.gif',
+  A1:'assets/glitch_A1.gif', A2:'assets/glitch_A2.gif', A3:'assets/glitch_A3.gif', A4:'assets/glitch_A4.gif', A5:'assets/glitch_A5.gif', A6:'assets/glitch_A6.gif',
+  B1:'assets/glitch_B1.gif', B2:'assets/glitch_B2.gif', B3:'assets/glitch_B3.gif', B4:'assets/glitch_B4.gif', B5:'assets/glitch_B5.gif', B6:'assets/glitch_B6.gif',
   C1:'assets/glitch_C1.gif'
 };
 
+// 字体（可选，不存在也不报错）
+const FONT_PATH = null;                 // 例如 'fonts.ttf'
+const WOMAN_FONT_PATH = null;           // 例如 'SpecialElite-Regular.ttf'
+
+// 眼睛层：所有故事统一素材（可留空）
+const EYE_IMAGE_PATH = 'assets/eyes.png';  // 如果没有这张图也没关系
+
+// —— 降载默认值（更稳）——
+let RESOLUTION = 14;                 // 方块大小（越大越省）
+let ASCII_UPDATE_INTERVAL = 6;       // 隔几帧更新一次马赛克
+let MOSAIC_LEVELS = 4;               // 灰阶层级
+let MOSAIC_ALPHA = 255;
+let MOSAIC_MIN_GRAY = 20, MOSAIC_MAX_GRAY = 170;
+let BG_DARKEN_ALPHA = 45;
+
+// glitch 叠加
 let USE_GLITCH_IMAGE = true;
-let GLITCH_IMAGE_PATH = GLITCH_MAP[storyKey] || null;
-let EYE_IMAGE_PATH = 'assets/eyes.png';
-let EYE_COUNT = 7;
+let GLITCH_IMAGE_PATH = GLITCH_MAP[storyKey] || 'assets/glitch_A1.gif';
+let GLITCH_IMAGE_ALPHA = 230;
+let GLITCH_FLASH_PROB = 0.008;
+let GLITCH_MIN_FRAMES = 10;
+let GLITCH_MAX_FRAMES = 20;
+let KEY_OUT_BLACK = true;
+let KEY_BLACK_THRESHOLD = 28, KEY_BLACK_SOFTNESS = 24;
 
-let RESOLUTION=10, ASCII_UPDATE_INTERVAL=3, MOSAIC_LEVELS=6, MOSAIC_ALPHA=255,
-    MOSAIC_MIN_GRAY=20, MOSAIC_MAX_GRAY=170, BG_DARKEN_ALPHA=45;
+// 右侧丝带与文字
+let RIGHT_RATIO = 0.56;
+let SAFE_TOP = 30, SAFE_RIGHT = 30, SAFE_BOTTOM = 30, GUTTER = 24;
 
-let GLITCH_IMAGE_ALPHA=245, GLITCH_FLASH_PROB=0.015, GLITCH_MIN_FRAMES=15, GLITCH_MAX_FRAMES=30;
-let KEY_OUT_BLACK=true, KEY_BLACK_THRESHOLD=28, KEY_BLACK_SOFTNESS=24;
+let WOMAN_TEXT = storyLabel || 'woman';
+let WOMAN_SIZE = 96, WOMAN_LINE_H = 1.05;
+let WOMAN_PAD_X = 14, WOMAN_PAD_Y = 8, WOMAN_COLOR = [255,255,255];
 
-let RIGHT_RATIO=0.56, SAFE_TOP=30, SAFE_RIGHT=30, SAFE_BOTTOM=30, GUTTER=24;
-let WOMAN_TEXT = (storyLabel || 'woman'), WOMAN_SIZE=96, WOMAN_LINE_H=1.05, WOMAN_PAD_X=14, WOMAN_PAD_Y=8, WOMAN_COLOR=[255,255,255];
-let PARA_SIZE=16, PARA_LINE_H=1.25, PARA_PAD_X=12, PARA_PAD_Y=8, PARA_GAP=12, BOX_FILL=[210,20,20], BOX_ALPHA=220, TEXT_COLOR=[255,255,255], SHADOW_ALPHA=40, SHADOW_OFFSET=2;
-let TEAR_INTENSITY=2.0, TEAR_SCALE=0.03, TEAR_ALPHA=35, WRAP_WIDTH_RATIO=0.95;
+let PARA_SIZE = 16, PARA_LINE_H = 1.25;
+let PARA_PAD_X = 12, PARA_PAD_Y = 8, PARA_GAP = 12;
+let BOX_FILL = [210,20,20], BOX_ALPHA = 220, TEXT_COLOR=[255,255,255];
+let SHADOW_ALPHA = 40, SHADOW_OFFSET = 2;
+let TEAR_INTENSITY = 2.0, TEAR_SCALE = 0.03, TEAR_ALPHA = 35;
+let WRAP_WIDTH_RATIO = 0.95;
 
-let RIBBON_BLEED_ENABLED=true, RIBBON_BLEED_DELAY_FRAMES=200, RIBBON_SPAWN_DENSITY=0.00010, RIBBON_DRIP_MAX=350,
-    RIBBON_DRIP_SPEED_MIN=0.05, RIBBON_DRIP_SPEED_MAX=0.2, RIBBON_DRIP_LEN_MIN=80, RIBBON_DRIP_LEN_MAX=380,
-    RIBBON_DRIP_THICK_MIN=7, RIBBON_DRIP_THICK_MAX=8, RIBBON_DRIP_WOBBLE=0.85, RIBBON_DRIP_ALPHA=230;
+// 出血（降载）
+let RIBBON_BLEED_ENABLED = true;
+let RIBBON_BLEED_DELAY_FRAMES = 200;
+let RIBBON_SPAWN_DENSITY = 0.00006;   // ↓
+let RIBBON_DRIP_MAX = 220;            // ↓
+let RIBBON_DRIP_SPEED_MIN=0.05, RIBBON_DRIP_SPEED_MAX=0.2;
+let RIBBON_DRIP_LEN_MIN=80, RIBBON_DRIP_LEN_MAX=320;
+let RIBBON_DRIP_THICK_MIN=7, RIBBON_DRIP_THICK_MAX=8;
+let RIBBON_DRIP_WOBBLE=0.85, RIBBON_DRIP_ALPHA=230;
 
-let customFont=null, womanFont=null, video=null, mosaicBuffer=null, mosaicTick=0,
-    glitchStill=null, glitchKeyed=null, glitchOn=false, glitchFramesLeft=0;
-let rightRect={x:0,y:0,w:0,h:0}, ribbonEdges=[], ribbonDrips=[], ribbonBleedStart=0, ribbonBleedStarted=false;
+/* —— 轻量模式 ?lite=1 —— */
+if (LITE){
+  RESOLUTION = 16;
+  ASCII_UPDATE_INTERVAL = 8;
+  MOSAIC_LEVELS = 4;
+  GLITCH_FLASH_PROB = 0.006;
+  GLITCH_MIN_FRAMES = 8;
+  GLITCH_MAX_FRAMES = 16;
+  RIBBON_SPAWN_DENSITY = 0.00005;
+  RIBBON_DRIP_MAX = 180;
+}
+
+/* ================== 运行变量 ================== */
+let customFont=null, womanFont=null;
+let video=null, mosaicBuffer=null, mosaicTick=0;
+let glitchStill=null, glitchKeyed=null, glitchOn=false, glitchFramesLeft=0;
+let rightRect={x:0,y:0,w:0,h:0};
+let paragraphs=buildStoryParagraphs();
+
+// 眼睛层
 let eyeImg=null, eyes=[];
 
-/* ========== p5 生命周期 ========== */
+// 出血
+let ribbonEdges=[], ribbonDrips=[], ribbonBleedStart=0, ribbonBleedStarted=false;
+
+// 诊断
+let diagDiv=null;
+function diag(msg, ok=true){
+  if(!DIAG_ON) return;
+  if(!diagDiv){ diagDiv = document.createElement('div'); diagDiv.className='diag'; document.body.appendChild(diagDiv); }
+  const line = (ok? 'ok ':'bad ')+msg+'\n';
+  diagDiv.textContent += (ok? '✓ ':'✗ ')+msg+'\n';
+}
+
+/* ================== 预加载 ================== */
 function preload(){
   try{
-    paragraphs = buildStoryParagraphs();
-  }catch(e){ DIAG.err('buildStoryParagraphs', e); }
+    if(FONT_PATH) customFont = loadFont(FONT_PATH, ()=>diag('字体 font 加载 OK'), ()=>diag('字体 font 加载失败',false));
+    if(WOMAN_FONT_PATH) womanFont = loadFont(WOMAN_FONT_PATH, ()=>diag('标题字体 加载 OK'), ()=>diag('标题字体 加载失败',false));
+  }catch(e){}
 
-  try{
-    if (USE_GLITCH_IMAGE && GLITCH_IMAGE_PATH){
-      glitchStill = loadImage(GLITCH_IMAGE_PATH,
-        ()=>DIAG.ok('glitch 素材已加载'),
-        ()=>{ DIAG.log('⚠ glitch 素材加载失败：'+GLITCH_IMAGE_PATH); glitchStill=null; });
-    } else {
-      DIAG.log('ℹ 未设置 glitch 素材路径（可忽略）');
-    }
-  }catch(e){ DIAG.err('loadImage glitch', e); }
+  if(USE_GLITCH_IMAGE){
+    glitchStill = loadImage(GLITCH_IMAGE_PATH,
+      ()=>diag('glitch 素材加载成功: '+GLITCH_IMAGE_PATH),
+      ()=>{ diag('glitch 素材加载失败: '+GLITCH_IMAGE_PATH,false); glitchStill=null; USE_GLITCH_IMAGE=false; });
+  }
 
-  try{
+  if(EYE_IMAGE_PATH){
     eyeImg = loadImage(EYE_IMAGE_PATH,
-      ()=>DIAG.ok('眼睛素材已加载'),
-      ()=>{ DIAG.log('⚠ 眼睛素材缺失：'+EYE_IMAGE_PATH); eyeImg=null; });
-  }catch(e){ DIAG.err('loadImage eyes', e); }
-}
-
-function setup(){
-  try{
-    createCanvas(windowWidth, windowHeight);
-    textAlign(LEFT,TOP);
-    DIAG.ok('p5 canvas 初始化');
-  }catch(e){ DIAG.err('createCanvas', e); }
-
-  try{
-    // 摄像头（失败也不影响文字/丝带绘制）
-    const constraints = { video: { width: {ideal: 640}, height:{ideal:480} }, audio:false };
-    video = createCapture(constraints,
-      ()=>DIAG.ok('摄像头 createCapture 调用'));
-    video.elt.onloadedmetadata = ()=>DIAG.ok('摄像头 metadata ready');
-    video.elt.onloadeddata = ()=>DIAG.ok('摄像头流已就绪');
-    video.size(floor(width/RESOLUTION), floor(height/RESOLUTION));
-    video.hide();
-  }catch(e){ DIAG.err('createCapture', e); }
-
-  try{
-    mosaicBuffer = createGraphics(width,height);
-    mosaicBuffer.noStroke();
-    DIAG.ok('mosaicBuffer 创建成功');
-  }catch(e){ DIAG.err('createGraphics mosaic', e); }
-
-  try{
-    if(USE_GLITCH_IMAGE && KEY_OUT_BLACK && glitchStill){
-      glitchKeyed = keyOutBlack(glitchStill, KEY_BLACK_THRESHOLD, KEY_BLACK_SOFTNESS);
-      DIAG.ok('glitch 抠黑完成');
-    }
-  }catch(e){ DIAG.err('keyOutBlack', e); }
-
-  updateLayout();
-  ribbonBleedStart=frameCount;
-  initEyes();
-  DIAG.ok('setup 完成');
-}
-
-function draw(){
-  try{
-    background(0);
-    drawMosaicBackground();
-    if(BG_DARKEN_ALPHA>0){ noStroke(); fill(0,BG_DARKEN_ALPHA); rect(0,0,width,height); }
-    if(!glitchOn) drawEyes();
-    maybeFlashGlitchImage();
-    ribbonEdges.length=0; drawRightColumn(true);
-    if(RIBBON_BLEED_ENABLED) bleedRibbons();
-    drawRightColumn(false);
-  }catch(e){
-    DIAG.err('draw()', e);
-    noLoop();
+      ()=>diag('eyes 素材加载成功'),
+      ()=>{ diag('eyes 素材加载失败（忽略）',false); eyeImg=null; });
   }
 }
 
-/* ========== 绘制函数（与之前一致，略带空值保护） ========== */
+/* ================== 初始化 ================== */
+function setup(){
+  createCanvas(windowWidth, windowHeight);
+  frameRate(30); // 锁 30fps 更稳
+
+  if(customFont) textFont(customFont);
+  textAlign(LEFT,TOP);
+
+  // 摄像头（受控约束，减负载）
+  const constraints = { video:{ width:{ideal:480}, height:{ideal:360}, frameRate:{ideal:24,max:30} }, audio:false };
+  try{
+    video = createCapture(constraints, ()=>diag('createCapture 调用'));
+    video.size(floor(width/RESOLUTION), floor(height/RESOLUTION));
+    video.hide();
+  }catch(e){
+    diag('createCapture 失败，退化为纯静态背景',false);
+    video=null;
+  }
+
+  mosaicBuffer = createGraphics(width, height);
+  mosaicBuffer.noStroke();
+
+  if(USE_GLITCH_IMAGE && KEY_OUT_BLACK && glitchStill){
+    glitchKeyed = keyOutBlack(glitchStill, KEY_BLACK_THRESHOLD, KEY_BLACK_SOFTNESS);
+  }
+
+  updateLayout();
+  ribbonBleedStart = frameCount;
+
+  initEyes();
+  diag('setup 完成');
+}
+
+/* ================== 每帧 ================== */
+function draw(){
+  background(0);
+
+  // 1) 背景方块马赛克
+  drawMosaicBackground();
+
+  // 2) 背景加深罩
+  if(BG_DARKEN_ALPHA>0){
+    noStroke(); fill(0,BG_DARKEN_ALPHA); rect(0,0,width,height);
+  }
+
+  // 3) 小眼睛（glitch 出现时不绘制；带保护）
+  if(!glitchOn && typeof drawEyes === 'function' && eyeImg && eyes && eyes.length){
+    drawEyes();
+  }
+
+  // 4) glitch 闪现
+  maybeFlashGlitchImage();
+
+  // 5) 先画红丝带（收集边缘）
+  ribbonEdges.length=0;
+  drawRightColumn(true);
+
+  // 6) 出血
+  if(RIBBON_BLEED_ENABLED) bleedRibbons();
+
+  // 7) 再画一遍丝带遮罩，保证不挡字
+  drawRightColumn(false);
+}
+
+/* ================== 马赛克底图 ================== */
 function drawMosaicBackground(){
-  if(!mosaicBuffer || !video) return; // 摄像头缺失则不画灰块背景
+  if(!video){
+    // 无摄像头：静态渐变 + 扫描线
+    const g = drawingContext.createLinearGradient(0,0,width,height);
+    g.addColorStop(0,'#0b0b0b'); g.addColorStop(1,'#1a0c0c');
+    drawingContext.fillStyle=g; noStroke(); rect(0,0,width,height);
+    stroke(255,14); for(let i=0;i<height;i+=22) line(0,i,width,i);
+    return;
+  }
+
   if(mosaicTick % ASCII_UPDATE_INTERVAL === 0){
     mosaicBuffer.clear(); video.loadPixels();
-    if(!video.pixels || !video.pixels.length) return;
-    for(let y=0;y<video.height;y++){
-      for(let x=0;x<video.width;x++){
-        const idx=(x+y*video.width)*4;
+
+    const vw=video.width, vh=video.height, R=RESOLUTION;
+    for(let y=0;y<vh;y++){
+      let rowIndex = y*vw*4;
+      for(let x=0;x<vw;x++){
+        const idx = rowIndex + x*4;
         const r=video.pixels[idx], g=video.pixels[idx+1], b=video.pixels[idx+2];
         const bright=(r+g+b)/3;
         const level=floor(map(bright,0,255,0,MOSAIC_LEVELS));
         const q=map(level,0,MOSAIC_LEVELS-1,MOSAIC_MIN_GRAY,MOSAIC_MAX_GRAY);
-        mosaicBuffer.fill(q,MOSAIC_ALPHA);
-        mosaicBuffer.rect(x*RESOLUTION,y*RESOLUTION,RESOLUTION,RESOLUTION);
+        mosaicBuffer.fill(q, MOSAIC_ALPHA);
+        mosaicBuffer.rect(x*R, y*R, R, R);
       }
     }
   }
-  mosaicTick++; image(mosaicBuffer,0,0);
+  mosaicTick++;
+  image(mosaicBuffer,0,0,width,height);
 }
+
+/* ================== glitch（抠黑） ================== */
 function maybeFlashGlitchImage(){
   if(!USE_GLITCH_IMAGE || !glitchStill) return;
-  if(!glitchOn && random()<GLITCH_FLASH_PROB){ glitchOn=true; glitchFramesLeft=floor(random(GLITCH_MIN_FRAMES,GLITCH_MAX_FRAMES+1)); }
+
+  if(!glitchOn && random()<GLITCH_FLASH_PROB){
+    glitchOn=true;
+    glitchFramesLeft = floor(random(GLITCH_MIN_FRAMES, GLITCH_MAX_FRAMES+1));
+  }
+
   if(glitchOn){
-    push(); tint(255,GLITCH_IMAGE_ALPHA); const img=(KEY_OUT_BLACK && glitchKeyed)?glitchKeyed:glitchStill;
-    const cs=min(width,height), is=min(img.width,img.height), sc=cs/is, dw=img.width*sc, dh=img.height*sc, dx=(width-dw)/2, dy=(height-dh)/2;
-    image(img,dx,dy,dw,dh); pop();
+    push();
+    tint(255, GLITCH_IMAGE_ALPHA);
+    const img=(KEY_OUT_BLACK && glitchKeyed)?glitchKeyed:glitchStill;
+
+    const canvasShort=min(width,height);
+    const imgShort=min(img.width,img.height);
+    const scale=canvasShort/imgShort;
+    const dw=img.width*scale, dh=img.height*scale;
+    const dx=(width-dw)/2, dy=(height-dh)/2;
+    image(img,dx,dy,dw,dh);
+    pop();
+
     if(--glitchFramesLeft<=0) glitchOn=false;
   }
 }
+
+/* ================== 右侧丝带与文字 ================== */
 function drawRightColumn(collect=true){
   updateLayout();
   let cursorY=rightRect.y;
 
+  if(womanFont) textFont(womanFont); else textFont('monospace');
   textSize(WOMAN_SIZE); textLeading(WOMAN_SIZE*WOMAN_LINE_H);
-  const titleLines = wrapLines(WOMAN_TEXT||'woman', rightRect.w*WRAP_WIDTH_RATIO, WOMAN_SIZE);
-  cursorY = drawRibbonBlock(titleLines, rightRect.x, cursorY, WOMAN_SIZE, WOMAN_PAD_X, WOMAN_PAD_Y, BOX_FILL, BOX_ALPHA, [255,255,255], collect);
+
+  const wrapW=rightRect.w*WRAP_WIDTH_RATIO;
+  const titleLines = wrapLines(WOMAN_TEXT, wrapW, WOMAN_SIZE);
+  cursorY = drawRibbonBlock(titleLines, rightRect.x, cursorY, WOMAN_SIZE, WOMAN_PAD_X, WOMAN_PAD_Y, BOX_FILL, BOX_ALPHA, WOMAN_COLOR, collect);
   cursorY += PARA_GAP*1.2;
 
+  if(customFont) textFont(customFont); else textFont('monospace');
   textSize(PARA_SIZE); textLeading(PARA_SIZE*PARA_LINE_H);
-  const wrapW = rightRect.w*WRAP_WIDTH_RATIO;
-  if(!paragraphs || !paragraphs.length){ paragraphs=['（暂无故事文本，请在 story-templates 中补充）']; }
-  for(const para of paragraphs){
-    const lines = wrapLines(para, wrapW, PARA_SIZE);
+
+  const paras=paragraphs;
+  for(let i=0;i<paras.length;i++){
+    const lines = wrapLines(paras[i], wrapW, PARA_SIZE);
     cursorY = drawRibbonBlock(lines, rightRect.x, cursorY, PARA_SIZE, PARA_PAD_X, PARA_PAD_Y, BOX_FILL, BOX_ALPHA, TEXT_COLOR, collect);
     cursorY += PARA_GAP;
   }
 }
+
 function drawRibbonBlock(lines,x,y,fontSize,padX,padY,fillRGB,fillAlpha,textRGB,collectEdges){
-  const widths=lines.map(s=>max(1,textWidth(String(s).replace(/\s+$/,''))));
+  const widths=lines.map(s=>max(1,textWidth(s.replace(/\s+$/,''))));
   const boxWs=widths.map(w=>w+padX*2), boxH=fontSize+padY*2;
+
   drawRibbonShape(x+SHADOW_OFFSET,y+SHADOW_OFFSET,boxWs,boxH,color(0,SHADOW_ALPHA),null);
   drawRibbonShape(x,y,boxWs,boxH,color(fillRGB[0],fillRGB[1],fillRGB[2],fillAlpha),{tear:true});
+
   fill(textRGB[0],textRGB[1],textRGB[2]); noStroke();
-  for(let i=0;i<lines.length;i++){ const s=String(lines[i]).replace(/\s+$/,''); const ty=y+padY+i*boxH; text(s,x+padX,ty); }
+  for(let i=0;i<lines.length;i++){
+    const s=lines[i].replace(/\s+$/,''); const ty=y+padY+i*boxH; text(s,x+padX,ty);
+  }
   if(collectEdges) collectRibbonBottomEdges(x,y,boxWs,boxH);
   return y+lines.length*boxH;
 }
+
 function drawRibbonShape(x,y,boxWs,boxH,fillCol,opt={tear:false}){
   const pts=buildRibbonOutline(x,y,boxWs,boxH);
   noStroke(); fill(fillCol); beginShape(); for(const p of pts) vertex(p.x,p.y); endShape(CLOSE);
-  if(opt&&opt.tear){ noFill(); stroke(255,TEAR_ALPHA); strokeWeight(2); beginShape();
-    for(const p of pts){ const jx=(noise(p.x*TEAR_SCALE,p.y*TEAR_SCALE)-.5)*2*TEAR_INTENSITY;
-      const jy=(noise(p.x*TEAR_SCALE+999,p.y*TEAR_SCALE+999)-.5)*2*TEAR_INTENSITY; vertex(p.x+jx,p.y+jy); }
+
+  if(opt&&opt.tear){
+    noFill(); stroke(255,TEAR_ALPHA); strokeWeight(2); beginShape();
+    for(const p of pts){
+      const jx=(noise(p.x*TEAR_SCALE,p.y*TEAR_SCALE)-.5)*2*TEAR_INTENSITY;
+      const jy=(noise(p.x*TEAR_SCALE+999,p.y*TEAR_SCALE+999)-.5)*2*TEAR_INTENSITY;
+      vertex(p.x+jx,p.y+jy);
+    }
     endShape(CLOSE);
   }
 }
+
 function buildRibbonOutline(x,y,boxWs,boxH){
-  const n=boxWs.length, pts=[]; pts.push({x:x,y:y}); pts.push({x:x+boxWs[0],y:y});
-  for(let i=0;i<n;i++){ pts.push({x:x+boxWs[i],y:y+(i+1)*boxH}); if(i<n-1) pts.push({x:x+boxWs[i+1],y:y+(i+1)*boxH}); }
-  pts.push({x:x,y:y+n*boxH}); pts.push({x:x,y:y}); return pts;
+  const n=boxWs.length, pts=[];
+  pts.push({x:x,y:y}); pts.push({x:x+boxWs[0],y:y});
+  for(let i=0;i<n;i++){
+    pts.push({x:x+boxWs[i],y:y+(i+1)*boxH});
+    if(i<n-1) pts.push({x:x+boxWs[i+1],y:y+(i+1)*boxH});
+  }
+  pts.push({x:x,y:y+n*boxH}); pts.push({x:x,y:y});
+  return pts;
 }
+
 function collectRibbonBottomEdges(x,y,boxWs,boxH){
   const n=boxWs.length;
-  for(let i=0;i<n-1;i++){ if(boxWs[i]>boxWs[i+1]){ const yEdge=y+(i+1)*boxH, x1=x+boxWs[i+1], x2=x+boxWs[i]; ribbonEdges.push({x1,x2,y:yEdge}); } }
-  const yBottom=y+n*boxH; ribbonEdges.push({x1:x,x2:x+boxWs[n-1],y:yBottom});
+  for(let i=0;i<n-1;i++){
+    if(boxWs[i]>boxWs[i+1]){
+      const yEdge=y+(i+1)*boxH, x1=x+boxWs[i+1], x2=x+boxWs[i];
+      ribbonEdges.push({x1,x2,y:yEdge});
+    }
+  }
+  const yBottom=y+n*boxH; ribbonEdges.push({x1:x, x2:x+boxWs[n-1], y:yBottom});
 }
+
+/* ================== 出血 ================== */
 function bleedRibbons(){
-  if(!ribbonBleedStarted){ if(frameCount-ribbonBleedStart>=RIBBON_BLEED_DELAY_FRAMES) ribbonBleedStarted=true; else return; }
+  if(!ribbonBleedStarted){
+    if(frameCount-ribbonBleedStart>=RIBBON_BLEED_DELAY_FRAMES) ribbonBleedStarted=true; else return;
+  }
+
   for(const seg of ribbonEdges){
     const L=max(0,seg.x2-seg.x1); if(L<=0) continue;
-    const expected=L*RIBBON_SPAWN_DENSITY, n=floor(expected), prob=expected-n;
-    let count=n+(random()<prob?1:0); count=min(count,max(0,RIBBON_DRIP_MAX-ribbonDrips.length));
+    const expected=L*RIBBON_SPAWN_DENSITY;
+    const n=floor(expected), prob=expected-n;
+    let count=n+(random()<prob?1:0);
+    count=min(count,max(0,RIBBON_DRIP_MAX-ribbonDrips.length));
+
     for(let k=0;k<count;k++){
-      const x=random(seg.x1+.5, seg.x2-.5), y0=seg.y+1, maxLen=max(0,height-y0-6);
+      const x=random(seg.x1+.5, seg.x2-.5), y0=seg.y+1;
+      const maxLen=max(0,height-y0-6);
       const len=constrain(random(RIBBON_DRIP_LEN_MIN,RIBBON_DRIP_LEN_MAX),12,maxLen);
-      ribbonDrips.push({ x,y0, head:0, len, speed:random(RIBBON_DRIP_SPEED_MIN,RIBBON_DRIP_SPEED_MAX),
-        thick:random(RIBBON_DRIP_THICK_MIN,RIBBON_DRIP_THICK_MAX), seed:random(1000) });
+
+      ribbonDrips.push({
+        x,y0, head:0, len,
+        speed:random(RIBBON_DRIP_SPEED_MIN,RIBBON_DRIP_SPEED_MAX),
+        thick:random(RIBBON_DRIP_THICK_MIN,RIBBON_DRIP_THICK_MAX),
+        seed:random(1000)
+      });
       if(ribbonDrips.length>=RIBBON_DRIP_MAX) break;
     }
     if(ribbonDrips.length>=RIBBON_DRIP_MAX) break;
   }
+
   noStroke();
   for(let i=ribbonDrips.length-1;i>=0;i--){
-    const d=ribbonDrips[i]; d.speed*=1.01; d.head+=d.speed;
+    const d=ribbonDrips[i];
+    d.speed*=1.01; d.head+=d.speed;
+
     const segH=3;
     for(let yy=0; yy<d.head && yy<d.len; yy+=segH){
       const t=yy/d.len, w=lerp(d.thick,d.thick*0.65,t);
@@ -301,48 +425,76 @@ function bleedRibbons(){
     }
     const wobHead=(noise(d.seed+d.head*0.05+frameCount*0.02)-.5)*2*RIBBON_DRIP_WOBBLE;
     fill(BOX_FILL[0],BOX_FILL[1],BOX_FILL[2],min(255,RIBBON_DRIP_ALPHA+10));
-    ellipse(d.x+wobHead, d.y0+d.head, d.thick * 1.2, d.thick * 1.2);
+    ellipse(d.x+wobHead, d.y0+d.head, d.thick*1.2, d.thick*1.2);
+
     if(d.head>d.len) ribbonDrips.splice(i,1);
   }
 }
+
+/* ================== 工具函数 ================== */
+function wrapLines(textStr, maxW, fontSize){
+  const tokens=textStr.split(/(\s+)/); let lines=['']; textSize(fontSize);
+  for(const tk of tokens){
+    const trial=lines[lines.length-1]+tk;
+    if(textWidth(trial)<=maxW || lines[lines.length-1]===''){ lines[lines.length-1]=trial; }
+    else { lines.push(tk.trimStart()); }
+  }
+  return lines.map(s=>s.replace(/\s+$/,''));
+}
+
+function updateLayout(){
+  const rightX=floor(width*RIGHT_RATIO)+GUTTER, rightW=max(220,width-rightX-SAFE_RIGHT);
+  const rightY=SAFE_TOP, rightH=height-SAFE_TOP-SAFE_BOTTOM;
+  rightRect={x:rightX,y:rightY,w:rightW,h:rightH};
+}
+
+function keyOutBlack(srcImg, threshold=28, softness=24){
+  try{
+    let keyed=createImage(srcImg.width, srcImg.height);
+    keyed.copy(srcImg,0,0,srcImg.width,srcImg.height,0,0,srcImg.width,srcImg.height);
+    keyed.loadPixels();
+    const n=keyed.width*keyed.height;
+    for(let i=0;i<n;i++){
+      const idx=i*4, r=keyed.pixels[idx], g=keyed.pixels[idx+1], b=keyed.pixels[idx+2], a0=keyed.pixels[idx+3];
+      const bright=(r+g+b)/3;
+      if(bright<=threshold) keyed.pixels[idx+3]=0;
+      else if(softness>0 && bright<threshold+softness){ const t=(bright-threshold)/softness; keyed.pixels[idx+3]=a0*t; }
+    }
+    keyed.updatePixels(); return keyed;
+  }catch(e){ return null; }
+}
+
+function windowResized(){
+  resizeCanvas(windowWidth, windowHeight);
+  mosaicBuffer=createGraphics(width,height); mosaicBuffer.noStroke();
+  if(video) video.size(floor(width/RESOLUTION), floor(height/RESOLUTION));
+  updateLayout(); initEyes();
+}
+
+/* ================== 眼睛层（可选） ================== */
 function initEyes(){
-  eyes=[]; if(!eyeImg) return;
-  for(let i=0;i<EYE_COUNT;i++){
+  eyes=[];
+  if(!eyeImg) return;
+  for(let i=0;i<7;i++){
     const margin=40, x=random(margin,width-margin), y=random(margin,height-margin);
     const targetW = random(90,140)*(width/1280 * 0.9 + 0.55);
     const targetH = targetW * (eyeImg.height/eyeImg.width);
-    eyes.push({ baseX:x, baseY:y, w:targetW, h:targetH, amp:random(4,10), spd:random(0.015,0.035), phase:random(TWO_PI), rotAmp:random(-0.06,0.06)});
+    eyes.push({ baseX:x, baseY:y, w:targetW, h:targetH, amp:random(4,10), spd:random(0.015,0.035), phase:random(TWO_PI), rotAmp:random(-0.06,0.06) });
   }
 }
-function wrapLines(textStr, maxW, fontSize){
-  const tokens=String(textStr).split(/(\s+)/); let lines=['']; textSize(fontSize);
-  for(const tk of tokens){ const trial=lines[lines.length-1]+tk;
-    if(textWidth(trial)<=maxW || lines[lines.length-1]===''){ lines[lines.length-1]=trial; }
-    else { lines.push(tk.trimStart()); } }
-  return lines.map(s=>s.replace(/\s+$/,''));
-}
-function updateLayout(){
-  const rightX=floor(width*RIGHT_RATIO)+GUTTER, rightW=max(220,width-rightX-SAFE_RIGHT), rightY=SAFE_TOP, rightH=height-SAFE_TOP-SAFE_BOTTOM;
-  rightRect={x:rightX,y:rightY,w:rightW,h:rightH};
-}
-function keyOutBlack(srcImg, threshold=28, softness=24){
-  let keyed=createImage(srcImg.width, srcImg.height);
-  keyed.copy(srcImg,0,0,srcImg.width,srcImg.height,0,0,srcImg.width,srcImg.height);
-  keyed.loadPixels();
-  const n=keyed.width*keyed.height;
-  for(let i=0;i<n;i++){
-    const idx=i*4, r=keyed.pixels[idx], g=keyed.pixels[idx+1], b=keyed.pixels[idx+2], a0=keyed.pixels[idx+3], bright=(r+g+b)/3;
-    if(bright<=threshold) keyed.pixels[idx+3]=0;
-    else if(softness>0 && bright<threshold+softness){ const t=(bright-threshold)/softness; keyed.pixels[idx+3]=a0*t; }
+
+function drawEyes(){
+  if(!eyeImg || !eyes.length) return;
+  push(); imageMode(CENTER);
+  for(const e of eyes){
+    const dy=sin(frameCount*e.spd+e.phase)*e.amp;
+    const dx=cos(frameCount*e.spd*0.8+e.phase)*e.amp*0.35;
+    const rot=sin(frameCount*e.spd*0.6+e.phase)*e.rotAmp;
+    push(); translate(e.baseX+dx, e.baseY+dy); rotate(rot); image(eyeImg,0,0,e.w,e.h); pop();
   }
-  keyed.updatePixels(); return keyed;
+  pop();
 }
-function windowResized(){
-  resizeCanvas(windowWidth, windowHeight);
-  if(!mosaicBuffer){ mosaicBuffer=createGraphics(width,height); mosaicBuffer.noStroke(); }
-  if(video){ video.size(floor(width/RESOLUTION), floor(height/RESOLUTION)); }
-  updateLayout(); initEyes();
-}
+
 </script>
 </body>
 </html>
