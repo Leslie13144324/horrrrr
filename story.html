@@ -7,14 +7,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
   <style>
-    html, body { margin:0; padding:0; height:100%; background:#000; color:#ffecec; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    html, body { margin:0; padding:0; height:100%; background:#000; color:#ffecec; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     canvas { display:block; }
-    /* 左上角简易 loading/调试信息（可删） */
     #hint { position:fixed; left:6px; top:6px; color:#ccc; font-size:12px; z-index:5; }
   </style>
 </head>
 <body>
-<div id="hint" style="display:none">Loading…</div>
+<div id="hint">Loading...</div>
 <script>
 /* ====================== 读取问卷 → 选故事键 ====================== */
 const payload = (()=>{ try { return JSON.parse(localStorage.getItem('quizPayload')||'{}'); } catch(e){ return {}; } })();
@@ -31,12 +30,11 @@ else if(bHit){  storyKey=bHit; storyTypeLabel='焦虑原型 '+bHit; }
 else if(cHit){  storyKey=cHit; storyTypeLabel='伪归类 '+cHit; }
 if(!storyKey) storyKey='A1'; // 兜底
 
-/* ====================== 你可以在这里改标题文字 ====================== */
-/* 例如：const CUSTOM_TITLE_TEXT = "怪物原型 A1";   写死一个标题
-         留 null 则使用 storyTypeLabel（如“身份原型 A1”） */
+/* ====== 标题：写死/自动 二选一 ====== */
+// 想固定标题，改成字符串；想用自动标签，设为 null
 const CUSTOM_TITLE_TEXT = null;
 
-/* ====================== 故事模板（示例：A1 有文案，其余留空位） ====================== */
+/* ====================== 故事模板（示例） ====================== */
 const T = {
   A1: `她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。
 领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。
@@ -50,7 +48,6 @@ const T = {
   C1:``
 };
 
-/* —— 按 storyKey 把模板里的占位替掉，拆成段落数组 —— */
 function buildStoryParagraphs(){
   let key=storyKey; if(!key || !T[key]) return ['（没有找到对应故事模板，请补齐 15 篇文本）'];
   let txt=T[key];
@@ -68,50 +65,41 @@ function buildStoryParagraphs(){
   return txt.split('\n').map(s=>s.trim()).filter(Boolean);
 }
 
-/* ====================== 视觉参数（保持与你之前一致） ====================== */
-/* —— 资源映射：glitch 随故事变化，eye 统一素材 —— */
+/* ====================== 资源与参数 ====================== */
 const GLITCH_MAP = {
   A1:'assets/glitch_A1.gif', A2:'assets/glitch_A2.gif', A3:'assets/glitch_A3.gif', A4:'assets/glitch_A4.gif', A5:'assets/glitch_A5.gif', A6:'assets/glitch_A6.gif',
   B1:'assets/glitch_B1.gif', B2:'assets/glitch_B2.gif', B3:'assets/glitch_B3.gif', B4:'assets/glitch_B4.gif', B5:'assets/glitch_B5.gif', B6:'assets/glitch_B6.gif',
   C1:'assets/glitch_C1.gif'
 };
 let GLITCH_IMAGE_PATH = GLITCH_MAP[storyKey] || 'assets/glitch_A1.gif';
-const EYE_IMAGE_PATH = 'assets/eyes.png';   // 统一的小眼睛素材
+const EYE_IMAGE_PATH = 'assets/eyes.png';
 
-/* —— 红丝带排版 —— */
-let RIGHT_RATIO = 0.58;         // 右栏开始的屏幕比例（越大右栏越靠右）
+let RIGHT_RATIO = 0.58;
 const SAFE_TOP=24, SAFE_RIGHT=24, SAFE_BOTTOM=24, GUTTER=18;
-let WOMAN_TEXT = CUSTOM_TITLE_TEXT || storyTypeLabel;  // ← 标题文案在这里
+let WOMAN_TEXT = CUSTOM_TITLE_TEXT || storyTypeLabel;
 let WOMAN_SIZE=92, WOMAN_LINE_H=1.05, WOMAN_PAD_X=14, WOMAN_PAD_Y=8;
 let PARA_SIZE=16, PARA_LINE_H=1.28, PARA_PAD_X=12, PARA_PAD_Y=9, PARA_GAP=12;
-let WRAP_WIDTH_RATIO = 0.96;    // 红框内的文字有效宽度（相对右栏宽度）
+let WRAP_WIDTH_RATIO = 0.96;
 
-const BOX_FILL = [210,20,20], BOX_ALPHA=220, TEXT_COLOR=[255,255,255];
+const BOX_FILL=[210,20,20], BOX_ALPHA=220, TEXT_COLOR=[255,255,255];
 const SHADOW_ALPHA=36, SHADOW_OFFSET=2;
 const TEAR_INTENSITY=2.0, TEAR_SCALE=0.03, TEAR_ALPHA=32;
 
-/* —— 背景马赛克（低配版） —— */
 const RESOLUTION=10, ASCII_UPDATE_INTERVAL=3, MOSAIC_LEVELS=6, MOSAIC_ALPHA=255, MOSAIC_MIN_GRAY=22, MOSAIC_MAX_GRAY=168, BG_DARKEN_ALPHA=52;
 
-/* —— glitch 闪现 —— */
 const GLITCH_IMAGE_ALPHA=240, GLITCH_FLASH_PROB=0.012, GLITCH_MIN_FRAMES=14, GLITCH_MAX_FRAMES=28;
 const KEY_OUT_BLACK=true, KEY_BLACK_THRESHOLD=28, KEY_BLACK_SOFTNESS=24;
 
-/* —— 状态变量 —— */
-let customFont=null, womanFont=null; // 可选字体（缺失会自动回退）
-let video=null, mosaicBuffer=null, mosaicTick=0;
+/* ====================== 运行状态 ====================== */
+let video=null, camReady=false;
+let mosaicBuffer=null, mosaicTick=0;
 let glitchStill=null, glitchKeyed=null, glitchOn=false, glitchFramesLeft=0;
-
 let rightRect={x:0,y:0,w:0,h:0};
 let paragraphs = buildStoryParagraphs();
-
 let eyeImg=null, eyes=[], EYE_COUNT=7;
 
-/* ====================== 预加载 ====================== */
+/* ====================== 预加载（不再加载外部字体，避免报错） ====================== */
 function preload(){
-  // 字体可选，加载失败会回退系统字体
-  try{ customFont=loadFont('fonts.ttf'); }catch(e){}
-  try{ womanFont=loadFont('SpecialElite-Regular.ttf'); }catch(e){}
   glitchStill = loadImage(GLITCH_IMAGE_PATH, ()=>{}, ()=>{ glitchStill=null; });
   eyeImg = loadImage(EYE_IMAGE_PATH, ()=>{}, ()=>{ eyeImg=null; });
 }
@@ -119,15 +107,15 @@ function preload(){
 /* ====================== 初始化 ====================== */
 function setup(){
   createCanvas(windowWidth, windowHeight);
-  if(customFont) textFont(customFont);
   textAlign(LEFT,TOP);
 
-  video = createCapture(VIDEO);
-  video.size(floor(width/RESOLUTION), floor(height/RESOLUTION));
-  video.hide();
+  // 摄像头：拿不到时 camReady=false，走降级背景
+  try{
+    video = createCapture({video:true, audio:false}, ()=>{ camReady=true; });
+    if(video){ video.size(floor(width/RESOLUTION), floor(height/RESOLUTION)); video.hide(); }
+  }catch(e){ camReady=false; }
 
-  mosaicBuffer = createGraphics(width, height);
-  mosaicBuffer.noStroke();
+  mosaicBuffer = createGraphics(width, height); mosaicBuffer.noStroke();
 
   if (glitchStill && KEY_OUT_BLACK){
     glitchKeyed = keyOutBlack(glitchStill, KEY_BLACK_THRESHOLD, KEY_BLACK_SOFTNESS);
@@ -135,6 +123,8 @@ function setup(){
 
   updateLayout();
   initEyes();
+
+  const hint = document.getElementById('hint'); if(hint) hint.style.display='none';
 }
 
 /* ====================== 每帧 ====================== */
@@ -143,17 +133,12 @@ function draw(){
   drawMosaicBackground();
   if(BG_DARKEN_ALPHA>0){ noStroke(); fill(0,BG_DARKEN_ALPHA); rect(0,0,width,height); }
 
-  // 小眼睛（与文字和 glitch 层级协调）
   if(!glitchOn) drawEyes();
-
-  // glitch
   maybeFlashGlitchImage();
-
-  // 红丝带排版（先收集边缘，再绘制，保证红框与字对齐）
   drawRightColumn();
 }
 
-/* ====================== 布局计算 & 自适应 ====================== */
+/* ====================== 布局与自适应 ====================== */
 function updateLayout(){
   const rightX = floor(width*RIGHT_RATIO)+GUTTER;
   const rightW = max(240, width-rightX-SAFE_RIGHT);
@@ -161,30 +146,23 @@ function updateLayout(){
   const rightH = height - SAFE_TOP - SAFE_BOTTOM;
   rightRect = {x:rightX, y:rightY, w:rightW, h:rightH};
 
-  // 根据屏幕高度，微调字号，确保不溢出
   const baseH = height;
   WOMAN_SIZE = constrain(round(map(baseH, 520, 1080, 64, 100)), 60, 104);
   PARA_SIZE  = constrain(round(map(baseH, 520, 1080, 14, 20)), 14, 20);
-
-  // 做一次“排版拟合”：如果段落总高度超出右栏，用更小字号重新排
   autosizeParagraphs();
 }
-
 function windowResized(){
   resizeCanvas(windowWidth, windowHeight);
   mosaicBuffer=createGraphics(width, height); mosaicBuffer.noStroke();
-  if(video) video.size(floor(width/RESOLUTION), floor(height/RESOLUTION));
+  if(video){ try{ video.size(floor(width/RESOLUTION), floor(height/RESOLUTION)); }catch(e){} }
   updateLayout(); initEyes();
 }
-
-/* —— 估算排版高度，必要时等比缩小字号 —— */
 function autosizeParagraphs(){
-  // 估算右栏总高：标题块 + 段落块 + 间距
-  textFont(womanFont || 'monospace'); textSize(WOMAN_SIZE); textLeading(WOMAN_SIZE*WOMAN_LINE_H);
+  textSize(WOMAN_SIZE); textLeading(WOMAN_SIZE*WOMAN_LINE_H);
   const titleLines = wrapLines(WOMAN_TEXT, rightRect.w*WRAP_WIDTH_RATIO, WOMAN_SIZE);
-  const titleH = (WOMAN_PAD_Y*2) + titleLines.length*(WOMAN_SIZE+WOMAN_PAD_Y*2);
+  const titleH = (WOMAN_PAD_Y*2) + titleLines.length*(WOMAN_SIZE + WOMAN_PAD_Y*2);
 
-  textFont(customFont || 'monospace'); textSize(PARA_SIZE); textLeading(PARA_SIZE*PARA_LINE_H);
+  textSize(PARA_SIZE); textLeading(PARA_SIZE*PARA_LINE_H);
   const wrapW = rightRect.w*WRAP_WIDTH_RATIO;
   let paraTotalH = 0;
   for(const p of paragraphs){
@@ -192,74 +170,50 @@ function autosizeParagraphs(){
     const boxH = PARA_PAD_Y*2 + lines.length*(PARA_SIZE + PARA_PAD_Y*2);
     paraTotalH += boxH + PARA_GAP;
   }
-
-  let total = titleH + paraTotalH;
-  if (total > rightRect.h){ // 溢出 → 同比例缩小 PARA_SIZE
+  const total = titleH + paraTotalH;
+  if (total > rightRect.h){
     const ratio = rightRect.h / total;
     const newPara = max(12, floor(PARA_SIZE*ratio*0.98));
-    if (newPara < PARA_SIZE){
-      PARA_SIZE = newPara;
-      // 重新估算一次（避免多余递归）
-      textSize(PARA_SIZE); textLeading(PARA_SIZE*PARA_LINE_H);
-    }
+    if (newPara < PARA_SIZE){ PARA_SIZE = newPara; }
   }
 }
 
-/* ====================== 右侧红丝带 ====================== */
+/* ====================== 红丝带 ====================== */
 function drawRightColumn(){
   let cursorY = rightRect.y;
 
-  // 标题块
-  textFont(womanFont || 'monospace');
+  // 标题
   textSize(WOMAN_SIZE); textLeading(WOMAN_SIZE*WOMAN_LINE_H);
   const titleLines = wrapLines(WOMAN_TEXT, rightRect.w*WRAP_WIDTH_RATIO, WOMAN_SIZE);
-  cursorY = drawRibbonBlock(
-    titleLines, rightRect.x, cursorY,
-    WOMAN_SIZE, WOMAN_PAD_X, WOMAN_PAD_Y,
-    BOX_FILL, BOX_ALPHA, [255,255,255]
-  );
+  cursorY = drawRibbonBlock(titleLines, rightRect.x, cursorY, WOMAN_SIZE, WOMAN_PAD_X, WOMAN_PAD_Y, BOX_FILL, BOX_ALPHA, [255,255,255]);
   cursorY += PARA_GAP*1.2;
 
-  // 段落块
-  textFont(customFont || 'monospace');
+  // 段落
   textSize(PARA_SIZE); textLeading(PARA_SIZE*PARA_LINE_H);
   const wrapW = rightRect.w*WRAP_WIDTH_RATIO;
-
   for (const p of paragraphs){
     const lines = wrapLines(p, wrapW, PARA_SIZE);
-    cursorY = drawRibbonBlock(
-      lines, rightRect.x, cursorY,
-      PARA_SIZE, PARA_PAD_X, PARA_PAD_Y,
-      BOX_FILL, BOX_ALPHA, TEXT_COLOR
-    );
+    cursorY = drawRibbonBlock(lines, rightRect.x, cursorY, PARA_SIZE, PARA_PAD_X, PARA_PAD_Y, BOX_FILL, BOX_ALPHA, TEXT_COLOR);
     cursorY += PARA_GAP;
-    if (cursorY > rightRect.y + rightRect.h - 8) break; // 保险：过长截断
+    if (cursorY > rightRect.y + rightRect.h - 8) break;
   }
 }
-
-/* —— 单个红丝带块（保证红框宽度与该行文字宽度一致） —— */
 function drawRibbonBlock(lines, x, y, fontSize, padX, padY, fillRGB, fillAlpha, textRGB){
   const widths = lines.map(s=>max(1, textWidth(s.replace(/\s+$/,''))));
   const boxWs = widths.map(w=>w + padX*2);
   const boxH  = fontSize + padY*2;
 
-  // 阴影
   drawRibbonShape(x+SHADOW_OFFSET, y+SHADOW_OFFSET, boxWs, boxH, color(0,SHADOW_ALPHA), null);
-  // 主体 + 撕裂边缘
   drawRibbonShape(x, y, boxWs, boxH, color(fillRGB[0],fillRGB[1],fillRGB[2],fillAlpha), {tear:true});
 
-  // 文字
-  fill(textRGB[0], textRGB[1], textRGB[2]);
-  noStroke();
+  fill(textRGB[0], textRGB[1], textRGB[2]); noStroke();
   for (let i=0;i<lines.length;i++){
-    const s = lines[i].replace(/\s+$/,'');
-    const ty = y + padY + i*boxH;
+    const s = lines[i].replace(/\s+$/,''); const ty = y + padY + i*boxH;
     text(s, x+padX, ty);
   }
   return y + lines.length*boxH;
 }
-
-function drawRibbonShape(x, y, boxWs, boxH, fillCol, opt={tear:false}){
+function drawRibbonShape(x,y,boxWs,boxH,fillCol,opt={tear:false}){
   const pts = buildRibbonOutline(x,y,boxWs,boxH);
   noStroke(); fill(fillCol); beginShape(); for(const p of pts) vertex(p.x,p.y); endShape(CLOSE);
   if(opt && opt.tear){
@@ -286,52 +240,61 @@ function buildRibbonOutline(x,y,boxWs,boxH){
   return pts;
 }
 
-/* ====================== 文本换行（逐 token 拆分） ====================== */
+/* ====================== 换行 ====================== */
 function wrapLines(textStr, maxW, fontSize){
-  const tokens = textStr.split(/(\s+)/); // 保留空白作为切分点
-  let lines=[''];
-  textSize(fontSize);
+  const tokens = textStr.split(/(\s+)/);
+  let lines=['']; textSize(fontSize);
   for(const tk of tokens){
-    const trial = lines[lines.length-1] + tk;
-    if(textWidth(trial)<=maxW || lines[lines.length-1]===''){
-      lines[lines.length-1] = trial;
-    }else{
-      lines.push(tk.trimStart());
-    }
+    const trial=lines[lines.length-1]+tk;
+    if(textWidth(trial)<=maxW || lines[lines.length-1]===''){ lines[lines.length-1]=trial; }
+    else { lines.push(tk.trimStart()); }
   }
   return lines.map(s=>s.replace(/\s+$/,''));
 }
 
-/* ====================== 背景马赛克 ====================== */
+/* ====================== 背景（稳态：无摄像头时降级） ====================== */
 function drawMosaicBackground(){
   if(mosaicTick % ASCII_UPDATE_INTERVAL === 0){
     mosaicBuffer.clear();
-    if(video && video.loadedmetadata) video.loadPixels();
-    for(let y=0;y<video.height;y++){
-      for(let x=0;x<video.width;x++){
-        const idx=(x+y*video.width)*4;
-        const r=video.pixels[idx], g=video.pixels[idx+1], b=video.pixels[idx+2];
-        const bright=(r+g+b)/3;
-        const level=floor(map(bright,0,255,0,MOSAIC_LEVELS));
-        const q=map(level,0,MOSAIC_LEVELS-1,MOSAIC_MIN_GRAY,MOSAIC_MAX_GRAY);
-        mosaicBuffer.fill(q, MOSAIC_ALPHA);
-        mosaicBuffer.rect(x*RESOLUTION,y*RESOLUTION,RESOLUTION,RESOLUTION);
+    if(camReady && video && video.loadedmetadata){
+      try{ video.loadPixels(); }catch(e){}
+      for(let y=0;y<video.height;y++){
+        for(let x=0;x<video.width;x++){
+          const idx=(x+y*video.width)*4;
+          const r=video.pixels[idx], g=video.pixels[idx+1], b=video.pixels[idx+2];
+          const bright=(r+g+b)/3;
+          const level=floor(map(bright,0,255,0,MOSAIC_LEVELS));
+          const q=map(level,0,MOSAIC_LEVELS-1,MOSAIC_MIN_GRAY,MOSAIC_MAX_GRAY);
+          mosaicBuffer.fill(q, MOSAIC_ALPHA);
+          mosaicBuffer.rect(x*RESOLUTION,y*RESOLUTION,RESOLUTION,RESOLUTION);
+        }
+      }
+    }else{
+      // 降级：随机噪声的灰块背景（无摄像头也能正常显示）
+      const cols = ceil(width/RESOLUTION), rows = ceil(height/RESOLUTION);
+      for(let j=0;j<rows;j++){
+        for(let i=0;i<cols;i++){
+          const n = noise(i*0.12, j*0.12, frameCount*0.01);
+          const level = floor(map(n,0,1,0,MOSAIC_LEVELS));
+          const q = map(level,0,MOSAIC_LEVELS-1,MOSAIC_MIN_GRAY,MOSAIC_MAX_GRAY);
+          mosaicBuffer.fill(q, MOSAIC_ALPHA);
+          mosaicBuffer.rect(i*RESOLUTION, j*RESOLUTION, RESOLUTION, RESOLUTION);
+        }
       }
     }
   }
   mosaicTick++; image(mosaicBuffer,0,0);
 }
 
-/* ====================== glitch 闪现（抠黑 + 居中等比） ====================== */
+/* ====================== glitch ====================== */
 function maybeFlashGlitchImage(){
   if(!glitchStill) return;
   if(!glitchOn && random()<GLITCH_FLASH_PROB){
-    glitchOn = true;
-    glitchFramesLeft=floor(random(GLITCH_MIN_FRAMES, GLITCH_MAX_FRAMES+1));
+    glitchOn=true; glitchFramesLeft=floor(random(GLITCH_MIN_FRAMES, GLITCH_MAX_FRAMES+1));
   }
   if(glitchOn){
     push(); tint(255,GLITCH_IMAGE_ALPHA);
-    const img = glitchKeyed||glitchStill;
+    const img = glitchKeyed || glitchStill;
     const cs=min(width,height), is=min(img.width,img.height);
     const sc=cs/is, dw=img.width*sc, dh=img.height*sc, dx=(width-dw)/2, dy=(height-dh)/2;
     image(img,dx,dy,dw,dh); pop();
@@ -339,17 +302,16 @@ function maybeFlashGlitchImage(){
   }
 }
 
-/* ====================== 小眼睛层（已按你要求保留 & 不再改动） ====================== */
+/* ====================== 小眼睛 ====================== */
 function initEyes(){
-  eyes = []; if(!eyeImg) return;
+  eyes=[]; if(!eyeImg) return;
   for(let i=0;i<EYE_COUNT;i++){
     const margin=40;
-    const x=random(margin, width-margin);
-    const y=random(margin, height-margin);
+    const x=random(margin,width-margin);
+    const y=random(margin,height-margin);
     const targetW = random(90,140)*(width/1280*0.9+0.55);
     const targetH = targetW*(eyeImg.height/eyeImg.width);
-    eyes.push({ baseX:x, baseY:y, w:targetW, h:targetH, amp:random(4,10), spd:random(0.015,0.035),
-                phase:random(TWO_PI), rotAmp:random(-0.06,0.06)});
+    eyes.push({ baseX:x, baseY:y, w:targetW, h:targetH, amp:random(4,10), spd:random(0.015,0.035), phase:random(TWO_PI), rotAmp:random(-0.06,0.06) });
   }
 }
 function drawEyes(){
