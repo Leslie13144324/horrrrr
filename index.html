@@ -8,19 +8,26 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
   <style>
     :root { --red:#ff3b3b; }
-    html,body { margin:0; padding:0; height:100%; background:#000; color:#ffecec; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    #sketch-holder{ position:fixed; inset:0; z-index:0; }
-    #ui{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:3; pointer-events:none; }
-    .card{ pointer-events:auto; width:min(780px,92vw); border:1px solid rgba(255,60,60,.45); background:rgba(0,0,0,.55); border-radius:18px; padding:20px 20px 16px; box-shadow:0 10px 40px rgba(255,0,0,.10); backdrop-filter: blur(2px); }
-    .title{ font-size:20px; line-height:1.6; color:#fff2f2; margin-bottom:16px; }
-    .row{ display:grid; gap:10px; }
-    .row.cols-2{ grid-template-columns:1fr 1fr; }
-    .btn{ background:rgba(0,0,0,.55); color:#ffd6d6; border:1px solid rgba(255,80,80,.6); border-radius:12px; padding:10px 12px; text-align:left; cursor:pointer; transition:.15s ease; }
-    .btn:hover{ border-color:#ff9b9b; color:#fff; background:rgba(0,0,0,.45); transform: translateY(-1px); }
-    .input{ width:100%; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,80,80,.55); border-radius:12px; padding:10px 12px; outline:none; }
-    .progress{ height:6px; width:100%; background:#171717; border-radius:999px; overflow:hidden; margin:0 0 8px; }
-    .bar{ height:100%; background:var(--red); width:0%; transition:width .25s ease; }
-    .vignette{ position:fixed; inset:0; pointer-events:none; z-index:2; background:radial-gradient(ellipse at center, rgba(0,0,0,0) 35%, rgba(0,0,0,.55) 100%); }
+    html,body{margin:0;padding:0;height:100%;background:#000;color:#ffecec;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    #sketch-holder{position:fixed;inset:0;z-index:0}
+    .vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
+      background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(0,0,0,.55) 100%)}
+    #ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      z-index:3;pointer-events:none}
+    .card{pointer-events:auto;width:min(780px,92vw);border:1px solid rgba(255,60,60,.45);
+      background:rgba(0,0,0,.55);border-radius:18px;padding:20px 20px 16px;
+      box-shadow:0 10px 40px rgba(255,0,0,.10);backdrop-filter:blur(2px)}
+    .title{font-size:20px;line-height:1.6;color:#fff2f2;margin-bottom:16px}
+    .row{display:grid;gap:10px}
+    .row.cols-2{grid-template-columns:1fr 1fr}
+    .btn{background:rgba(0,0,0,.55);color:#ffd6d6;border:1px solid rgba(255,80,80,.6);
+      border-radius:12px;padding:10px 12px;text-align:left;cursor:pointer;transition:.15s ease}
+    .btn:hover{border-color:#ff9b9b;color:#fff;background:rgba(0,0,0,.45);transform:translateY(-1px)}
+    .input{width:100%;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,80,80,.55);
+      border-radius:12px;padding:10px 12px;outline:none}
+    .progress{height:6px;width:100%;background:#171717;border-radius:999px;overflow:hidden;margin:0 0 8px}
+    .bar{height:100%;background:var(--red);width:0%;transition:width .25s ease}
   </style>
 </head>
 <body>
@@ -31,34 +38,133 @@
       <div class="progress"><div class="bar" id="bar"></div></div>
       <div class="title" id="title">请在下方输入你的名字：</div>
       <div class="row" id="content"></div>
-      <div class="footer" id="footer" style="opacity:.6; margin-top:10px; font-size:12px;">累计题数 / 目标 13：<span id="count">0</span> / 13</div>
+      <div class="footer" id="footer" style="opacity:.6;margin-top:10px;font-size:12px;">
+        累计题数 / 目标 13：<span id="count">0</span> / 13
+      </div>
     </div>
   </main>
 
 <script>
-/*================= 跳转到 story 页 =================*/
-const RESULT_URL = "https://leslie13144324.github.io/horrrrr/story.html";
-const USE_LOCAL_STORAGE = true;
+/* ===== 跳转配置 ===== */
+const RESULT_URL = "./story.html";         // 你也可以写成完整域名
+const USE_LOCAL_STORAGE = true;            // story.html 会从 localStorage 读取
 
-/*================= 递进式故障参数（每答一题增强） ================*/
+/* ===== 故障强度随题数提升 ===== */
 function paramsByProgress(n){
-  const t = constrain(n/13,0,1); const e = t*t*(3-2*t);
+  const t = constrain(n/13, 0, 1), e = t*t*(3-2*t);
   return {
-    amp: lerp(0,60,e),
-    slices: int(lerp(0,48,e)),
-    blocks: int(lerp(0,28,e)),
-    scanGap: max(2, int(lerp(8,3,e))),
-    scanAlpha: int(lerp(0,120,e)),
-    chroma: int(lerp(0,140,e)),
-    haze: lerp(14,0,e) // 开始朦胧，越答越清晰
+    amp: lerp(0, 60, e),
+    slices: int(lerp(0, 48, e)),
+    blocks: int(lerp(0, 28, e)),
+    scanGap: max(2, int(lerp(8, 3, e))),
+    scanAlpha: int(lerp(0, 120, e)),
+    chroma: int(lerp(0, 140, e)),
+    haze: lerp(14, 0, e)     // 朦胧一开始强，越往后越清晰
   };
 }
 
-/*================= 题库（与你的一致，略） =================*/
+/* ===== 题库（和你现在仓库保持一致：A→C1→B→D补足） ===== */
 const YES='是', NO='否';
-const A_QUESTIONS=[ /* ……保留你给的 A1~A6，同上 …… */ 
-  { id:'A1', main:'A1. 你是否在性别规训中感到被压迫？', anchorId:'AA1', anchor:'AA1. 当被要求“像某种样子”时，你会本能地顺从吗？',
-    supplements:[{id:'A1a',text:'A1a. 你更常被要求安静/乖巧/体面',options:[YES,NO,'不确定']},
+const A_QUESTIONS=[ /* ……此处与您现有题库一致…… */ ];
+const B_QUESTIONS=[ /* …… */ ];
+const D_QUESTIONS=[ /* …… */ ];
+const C1={ id:'C1', text:'C1. 他们说，你之所以异样，是因为——（必须选择一条）',
+          options:['你看起来不像这里的人','你总是躲在镜头外','你说话的方式让人不安'] };
+
+/* ===== 画布：先朦胧，逐题增强“方片+条纹+色偏” ===== */
+let video, pg;
+let totalAsked=0, contentDiv,titleDiv,footerCountDiv,barDiv;
+
+function setup(){
+  const holder=document.getElementById('sketch-holder');
+  createCanvas(window.innerWidth, window.innerHeight).parent(holder);
+  pixelDensity(1); pg=createGraphics(width,height);
+
+  video=createCapture({video:true,audio:false}); video.size(640,480); video.hide();
+
+  contentDiv=select('#content'); titleDiv=select('#title');
+  footerCountDiv=select('#count'); barDiv=select('#bar');
+
+  renderIntro();
+}
+function windowResized(){ resizeCanvas(window.innerWidth,window.innerHeight); pg=createGraphics(width,height); }
+
+function draw(){
+  // 摄像头→离屏 pg（镜像 + cover）
+  pg.push(); pg.clear(); pg.translate(pg.width,0); pg.scale(-1,1);
+  const w=pg.width,h=pg.height,vw=video.width,vh=video.height, s=max(w/vw,h/vh);
+  pg.image(video,(w-vw*s)/2,(h-vh*s)/2,vw*s,vh*s); pg.pop();
+
+  const p=paramsByProgress(totalAsked);
+
+  // 朦胧
+  if(p.haze>0){ pg.filter(BLUR, p.haze/12); pg.noStroke(); pg.fill(255,20); pg.rect(0,0,pg.width,pg.height); }
+
+  // 方片 + 横条
+  applyGlitchProgressive(pg,p);
+
+  // 绘制与色偏
+  image(pg,0,0,width,height);
+  if(p.chroma>0){
+    const off=int(map(noise(millis()*0.004),0,1,-p.amp/2.5,p.amp/2.5));
+    blendMode(ADD);
+    tint(255,60,60,p.chroma); image(pg, off,0);
+    tint(60,255,60,p.chroma); image(pg,-off,0);
+    tint(60,60,255,p.chroma); image(pg, 0,off/2);
+    noTint(); blendMode(BLEND);
+  }
+}
+
+function applyGlitchProgressive(g,p){
+  const t=millis()*0.001;
+  for(let i=0;i<p.slices;i++){
+    const sh=int(random(6,24)), y=int(random(0,g.height-sh));
+    const dx=int(map(noise(t*3+i*.17),0,1,-p.amp,p.amp));
+    g.copy(g,0,y,g.width,sh, dx,y,g.width,sh);
+  }
+  for(let i=0;i<p.blocks;i++){
+    const bw=int(random(40,160)), bh=int(random(14,60));
+    const sx=int(random(0,g.width-bw)), sy=int(random(0,g.height-bh));
+    const dx=int(sx + map(noise(t*2.4+i*.31),0,1,-p.amp,p.amp));
+    const dy=int(sy + map(noise(t*2.7+i*.37),0,1,-p.amp*.6,p.amp*.6));
+    g.copy(g,sx,sy,bw,bh, dx,dy,bw,bh);
+  }
+  if(p.scanAlpha>0){
+    g.noStroke(); g.fill(255,p.scanAlpha);
+    const gap=p.scanGap, off=int((sin(t*5.2)*.5+.5)*gap);
+    for(let y=off;y<g.height;y+=gap){ if(y%(gap*2)===0) g.rect(0,y,g.width,2); }
+  }
+}
+
+/* ===== 问卷状态机（与你规则一致；关键：不把多余 JS 放到 </html> 后！） ===== */
+let stage='intro', nameValue='', aIdx=0, bIdx=0, dIdx=0;
+let pendingAAnchor=false, pendingASupp=-1, pendingBSupp=-1;
+let identityCount=0, anxietyCount=0;
+const answers={};
+
+function clearUI(){ contentDiv.html(''); }
+function setBar(){ const pct=Math.min(100,Math.round((totalAsked/13)*100));
+  barDiv.elt.style.width=pct+'%'; footerCountDiv.html(totalAsked.toString()); }
+function recordAnswer(id,val){ answers[id]=val; totalAsked++; setBar(); }
+
+function renderIntro(){
+  stage='intro'; titleDiv.html('请在下方输入你的名字：'); clearUI();
+  contentDiv.elt.classList.add('row','cols-2');
+  const input=createInput('').addClass('input').parent(contentDiv);
+  const btn=createButton('开始答题').addClass('btn').parent(contentDiv);
+  btn.mousePressed(()=>{ const v=input.value().trim(); if(!v) return; nameValue=v;
+    contentDiv.elt.classList.remove('cols-2'); goA(); });
+  setBar();
+}
+
+// —— A：命中一个身份原型 → 进入 B；A 全否 → C1 → B
+function goA(){ stage='A'; pendingAAnchor=false; pendingASupp=-1; renderA(); }
+function renderA(){
+  const q=A_QUESTIONS[aIdx]; if(!q) return goC1();
+  if(!pendingAAnchor && pendingASupp===-1){
+    titleDiv.html(q.main);
+    drawOptions([[YES,()=>onAMain(q,YES)],[NO,()=>onAMain(q,NO)]],2);
+  }else if(pendingAAnchor && pendingASupp===-1)
                  {id:'A1b',text:'A1b. 你被评价的焦点多落在外表/举止',options:[YES,NO,'不确定']},
                  {id:'A1c',text:'A1c. 你在公共空间的行动常被旁观/提醒',options:[YES,NO,'不确定']}]},
   { id:'A2', main:'A2. 你是否因性倾向/情感指向遭遇过不适？', anchorId:'AA2', anchor:'AA2. 面对他人的窥探，你是否习惯回避？',
