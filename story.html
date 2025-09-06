@@ -26,35 +26,56 @@ else if(bHit){storyKey=bHit; storyLabel='焦虑原型 '+bHit;}
 else if(cHit){storyKey=cHit; storyLabel='伪归类 C1';}
 
 /*==================== 故事模板（示例 A1 完整，其它占位） ====================*/
-const T={
-  A1:`她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。
-领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。
-有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，否，否。
-她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。
+/*==================== 故事模板（含标题+正文） ====================*/
+const STORIES = {
+  A1: {
+    title: "那个女人",
+    text: `她第一次来我们办公室的时候，大家都说她很有礼貌，说话轻声细语，穿着合身，笑起来像谁都不会拒绝的人。领导很喜欢她，说她“像我们这行该有的样子”。她从不迟到，桌子永远整整齐齐，午饭吃得不多，话也不多。有时候我偷偷看她自拍：角度永远一样，下巴朝镜头对齐，[A1a特征]，[A1c特征]。
+她和谁都处得很好，只是没人见过她真正生气，或者真正开心。她每一次笑都像是按下某种按钮才启动的。[A1b特征]。
 有天晚上我们加班，办公室只剩我和她。我走过去想问她要不要一起走，结果看到她正在镜子前低头调整什么。不是妆容，不是衣领——是脸。
 她把脸从脸上慢慢剥下来，从额头撕开，再一寸一寸地卷到下巴。里面是空的。只有白白的塑料架子，像模特头。
-她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`,
-  A2:``,A3:``,A4:``,A5:``,A6:``,
-  B1:``,B2:``,B3:``,B4:``,B5:``,B6:``,
-  C1:``
+她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`
+  },
+  A2: { title: "（A2 故事名字）", text: `` },
+  A3: { title: "（A3 故事名字）", text: `` },
+  A4: { title: "（A4 故事名字）", text: `` },
+  A5: { title: "（A5 故事名字）", text: `` },
+  A6: { title: "（A6 故事名字）", text: `` },
+  B1: { title: "（B1 故事名字）", text: `` },
+  B2: { title: "（B2 故事名字）", text: `` },
+  B3: { title: "（B3 故事名字）", text: `` },
+  B4: { title: "（B4 故事名字）", text: `` },
+  B5: { title: "（B5 故事名字）", text: `` },
+  B6: { title: "（B6 故事名字）", text: `` },
+  C1: { title: "（C1 故事名字）", text: `` }
 };
+
+/*==================== 根据答案选故事 ====================*/
 function buildStoryParagraphs(){
-  const key=storyKey; if(!key||!T[key]) return ['（没有找到对应故事模板）'];
-  let txt=T[key];
-  if(key.startsWith('A')){
-    txt=txt.replaceAll(`[${key}a特征]`,ans[key+'a']||'')
-           .replaceAll(`[${key}b特征]`,ans[key+'b']||'')
-           .replaceAll(`[${key}c特征]`,ans[key+'c']||'');
-  }else if(key.startsWith('B')){
-    txt=txt.replaceAll(`[${key}a]`,ans[key+'a']||'')
-           .replaceAll(`[${key}b]`,ans[key+'b']||'')
-           .replaceAll(`[${key}c]`,ans[key+'c']||'');
-  }else if(key==='C1'){
-    txt=(T[key]||'').replaceAll('[C1选项]',ans['C1']||'');
+  const story = STORIES[storyKey];
+  if(!story) return ['（没有找到对应故事模板）'];
+
+  let txt = story.text;
+
+  if(storyKey.startsWith('A')){
+    txt = txt.replaceAll(`[${storyKey}a特征]`, ans[storyKey+'a']||'')
+             .replaceAll(`[${storyKey}b特征]`, ans[storyKey+'b']||'')
+             .replaceAll(`[${storyKey}c特征]`, ans[storyKey+'c']||'');
+  }else if(storyKey.startsWith('B')){
+    txt = txt.replaceAll(`[${storyKey}a]`, ans[storyKey+'a']||'')
+             .replaceAll(`[${storyKey}b]`, ans[storyKey+'b']||'')
+             .replaceAll(`[${storyKey}c]`, ans[storyKey+'c']||'');
+  }else if(storyKey==='C1'){
+    txt = txt.replaceAll('[C1选项]', ans['C1']||'');
   }
+
   return txt.split('\n').map(s=>s.trim()).filter(Boolean);
 }
-let paragraphs=buildStoryParagraphs();
+
+/*==================== 设置标题文本 ====================*/
+let WOMAN_TEXT = (STORIES[storyKey]?.title) || '未命名故事';
+let paragraphs = buildStoryParagraphs();
+
 
 /*==================== 视觉资源 ====================*/
 const GLITCH_MAP={
