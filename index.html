@@ -46,8 +46,8 @@
 
 <script>
 /* ===== 跳转配置 ===== */
-const RESULT_URL = "./story.html";         // 也可以写成你的完整域名
-const USE_LOCAL_STORAGE = true;            // story.html 会从 localStorage 读取
+const RESULT_URL = "./story.html";
+const USE_LOCAL_STORAGE = true;
 
 /* ===== 故障强度随题数提升 ===== */
 function paramsByProgress(n){
@@ -57,43 +57,61 @@ function paramsByProgress(n){
            chroma:int(lerp(0,140,e)), haze:lerp(14,0,e) };
 }
 
-/* ===== 题库（示例：结构与现仓库一致；可按需替换成你的完整题库） ===== */
+/* ===== 题库（A1/AA1 为是/否；A1a/b/c 为三选一且写入 fill 文本） ===== */
 const YES='是', NO='否';
 
 const A_QUESTIONS = [
-  { id:'A1', main:'A1. 你是否在性别规训中感到被压迫？', anchorId:'AA1', anchor:'AA1. 当被要求“像某种样子”时，你会本能地顺从吗？',
+  { id:'A1', main:'A1. 从小到大，你总被提醒，女孩子要有女孩子的样子', anchorId:'AA1', anchor:'AA1. 你时常感觉做女人无论怎么表现，总有人觉得你不够好',
     supplements:[
-      { id:'A1a', text:'A1a. 你更常被要求安静/乖巧/体面', options:[YES, NO, '不确定']},
-      { id:'A1b', text:'A1b. 你被评价的焦点多落在外表/举止', options:[YES, NO, '不确定']},
-      { id:'A1c', text:'A1c. 你在公共空间的行动常被旁观/提醒', options:[YES, NO, '不确定']},
+      { id:'A1a', text:'A1a. 你照片里的头发，总是', options:[
+        { label:'直发',   fill:'她的头发像被刀切过一样整齐，一根不偏，像是贴图而不是长出来的。' },
+        { label:'有刘海', fill:'她的刘海像量角器画出来的，一丝不差，像测量用的。' },
+        { label:'卷发',   fill:'她看上去像卷发的洋娃娃贴纸一样存在于照片里，背景动，她不动。' },
+      ]},
+      { id:'A1b', text:'A1b. 你穿的衣服，通常是', options:[
+        { label:'不记得何时买，但总能刚好搭上', fill:'她的笑容从来不变，像被印在脸上的，精确得像表盘一样没有误差。' },
+        { label:'每天差不多的搭配与发型',       fill:'她的头发像早上被放回去的位置，每一根都站队集合。' },
+        { label:'统一风格，像一套“自己定制的衣服”', fill:'她的衣服像是批量复制的模板，没有褶皱也没有体温。' },
+      ]},
+      { id:'A1c', text:'A1c. 你在人多的地方时，身体有没有自己动过？', options:[
+        { label:'肩膀先收一下，再把背挺直', fill:'她站得太直了，好像有人在身后绑着她的脊柱。' },
+        { label:'嘴角先抿一抿，然后迅速拉成标准的笑', fill:'她笑得很快，但像贴了两张一模一样的嘴皮。' },
+        { label:'脚会平行，膝盖朝前，像排队一样等着发生什么', fill:'她的腿像摆在展柜里的模特，没有重量，没有动作的权利。' },
+      ]},
     ] },
+
+  // 其余 A2~A6 保持你原有逻辑（此处略）。如也要做“选项→fill文本”，可按上面 A1 的结构扩展。
   { id:'A2', main:'A2. 你是否因性倾向/情感指向遭遇过不适？', anchorId:'AA2', anchor:'AA2. 面对他人的窥探，你是否习惯回避？',
     supplements:[
-      { id:'A2a', text:'A2a. 你更愿以暧昧/隐语表达自我', options:[YES, NO, '不确定']},
-      { id:'A2b', text:'A2b. 你的亲密边界常被试探', options:[YES, NO, '不确定']},
-      { id:'A2c', text:'A2c. 你害怕“被看见”的后果', options:[YES, NO, '不确定']},
+      { id:'A2a', text:'A2a. 你更愿以暧昧/隐语表达自我', options:[YES, NO] },
+      { id:'A2b', text:'A2b. 你的亲密边界常被试探', options:[YES, NO] },
+      { id:'A2c', text:'A2c. 你害怕“被看见”的后果', options:[YES, NO, '不确定'] },
     ] },
+
   { id:'A3', main:'A3. 你的身体差异常被凝视/标注过吗？', anchorId:'AA3', anchor:'AA3. 你是否因此避免公开照面或拍照？',
     supplements:[
-      { id:'A3a', text:'A3a. 你习惯调整姿态以躲避镜头', options:[YES, NO, '不确定']},
-      { id:'A3b', text:'A3b. 你会下意识收敛动作', options:[YES, NO, '不确定']},
-      { id:'A3c', text:'A3c. 你不信任镜子里的自己', options:[YES, NO, '不确定']},
+      { id:'A3a', text:'A3a. 你习惯调整姿态以躲避镜头', options:[YES, NO] },
+      { id:'A3b', text:'A3b. 你会下意识收敛动作', options:[YES, NO] },
+      { id:'A3c', text:'A3c. 你不信任镜子里的自己', options:[YES, NO, '不确定'] },
     ] },
+
   { id:'A4', main:'A4. 你是否是异乡人/外地身份而被区别对待？', anchorId:'AA4', anchor:'AA4. 你说话/穿着常被人判断“不是本地人”？',
     supplements:[
       { id:'A4a', text:'A4a. 你的声音带有口音或奇怪停顿', options:['口音','停顿','过快']},
       { id:'A4b', text:'A4b. 你最显眼的特征常被记住', options:['肤色','穿着','眼神']},
       { id:'A4c', text:'A4c. 人群中你身上的气味常被注意', options:['潮湿','辛辣','消毒水']},
     ] },
+
   { id:'A5', main:'A5. 你是否来自控制/压抑的家庭结构？', anchorId:'AA5', anchor:'AA5. 你的决定常被否定或被代替吗？',
     supplements:[
-      { id:'A5a', text:'A5a. 你常在“更懂的人”面前沉默', options:[YES, NO, '不确定']},
-      { id:'A5b', text:'A5b. 你做选择会先想“家里会怎么说”', options:[YES, NO, '不确定']},
-      { id:'A5c', text:'A5c. 你梦见家里房间的门没有把手', options:[YES, NO, '不确定']},
+      { id:'A5a', text:'A5a. 你常在“更懂的人”面前沉默', options:[YES, NO] },
+      { id:'A5b', text:'A5b. 你做选择会先想“家里会怎么说”', options:[YES, NO] },
+      { id:'A5c', text:'A5c. 你梦见家里房间的门没有把手', options:[YES, NO, '不确定'] },
     ] },
+
   { id:'A6', main:'A6. 你是否在社交中长期被忽略/边缘？', anchorId:'AA6', anchor:'AA6. 你是否习惯在角落观察而不发声？',
     supplements:[
-      { id:'A6a', text:'A6a. 你常被描述为“不合拍/过安静”', options:['不合拍','过安静','不确定']},
+      { id:'A6a', text:'A6a. 你常被描述为“不合拍/过安静”', options:['不合拍','过安静']},
       { id:'A6b', text:'A6b. 你更倾向选择靠边/背墙的位置', options:['靠窗角','最后一排','门口侧']},
       { id:'A6c', text:'A6c. 你会反复做一些安抚性小动作', options:['捏衣角','抠指甲','理头发']},
     ] },
@@ -152,7 +170,7 @@ const D_QUESTIONS = [
   { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名','电流嗡嗡']},
 ];
 
-/* ===== 画布：先朦胧，逐题增强“方片+条纹+色偏” ===== */
+/* ===== 画布 & 背景（保持不变） ===== */
 let video, pg, camReady=false;
 let totalAsked=0, contentDiv,titleDiv,footerCountDiv,barDiv;
 
@@ -178,22 +196,15 @@ function windowResized(){ resizeCanvas(window.innerWidth, window.innerHeight); p
 
 function draw(){
   if(camReady && video){
-    // 摄像头→离屏 pg（镜像 + cover）
     pg.push(); pg.clear(); pg.translate(pg.width,0); pg.scale(-1,1);
     const w=pg.width,h=pg.height,vw=video.width,vh=video.height; const s=max(w/vw,h/vh); const dw=vw*s, dh=vh*s;
     pg.image(video,(w-dw)/2,(h-dh)/2,dw,dh); pg.pop();
 
-    // 根据题数调参
     const p = paramsByProgress(totalAsked);
-
-    // 朦胧（开始强，之后减弱）
     if (p.haze > 0) { pg.filter(BLUR, p.haze/12); pg.fill(255, 20); pg.noStroke(); pg.rect(0,0,pg.width,pg.height); }
 
-    // 方片 + 横条
-    applyGlitchProgressive(pg, p);
-    image(pg,0,0,width,height);
+    applyGlitchProgressive(pg, p); image(pg,0,0,width,height);
 
-    // RGB 色偏
     if (p.chroma > 0){
       const off = int(map(noise(millis()*0.004), 0, 1, -p.amp/2.5, p.amp/2.5));
       blendMode(ADD);
@@ -203,7 +214,6 @@ function draw(){
       noTint(); blendMode(BLEND);
     }
   }else{
-    // 降级静态背景
     const g = drawingContext.createLinearGradient(0,0,width,height); g.addColorStop(0,'#0b0b0b'); g.addColorStop(1,'#1a0c0c');
     drawingContext.fillStyle=g; noStroke(); rect(0,0,width,height);
     noFill(); stroke(255,12); for(let i=0;i<height;i+=22) line(0,i,width,i);
@@ -264,7 +274,15 @@ function renderA(){
   }else{
     const s=q.supplements[pendingASuppIndex];
     titleDiv.html(s.text);
-    renderOptions(s.options.map(opt=>({label:opt,on:()=>onASupp(q,s,opt)})),1);
+    // 支持对象选项（{label, fill}）或字符串/YES/NO
+    const opts = s.options.map(opt=>{
+      if(typeof opt==='object'){
+        return {label:opt.label, on:()=>onASupp(q,s,opt)};   // 把对象原样传给 onASupp
+      }else{
+        return {label:opt, on:()=>onASupp(q,s,opt)};
+      }
+    });
+    renderOptions(opts,1);
   }
 }
 function onAMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingAAnchor=true; } else { aIndex++; } clearUI(); renderA(); }
@@ -275,10 +293,11 @@ function onAAnchor(q,ans){
   clearUI(); renderA();
 }
 function onASupp(q,s,choice){
-  recordAnswer(s.id,choice);
+  // 如果 choice 为对象（{label, fill}），写入 fill 文本以供 story 替换
+  const value = (typeof choice==='object' && 'fill' in choice) ? choice.fill : choice;
+  recordAnswer(s.id, value);
   pendingASuppIndex++;
   if(pendingASuppIndex>=q.supplements.length){
-    // ✅ 命中身份原型且补充问完 → 不再问 B，直接数量检验（会进入 D 补足到 13）
     pendingASuppIndex=-1;
     return questionCountCheck();
   }
@@ -337,12 +356,14 @@ function goDone(){
   setBar();
 }
 
-// 通用渲染
+// 通用渲染（支持传入 {label,on}；内部也兼容字符串）
 function renderOptions(list, cols){
   contentDiv.elt.classList.remove('cols-2');
   contentDiv.elt.classList.add('row');
   if(cols===2) contentDiv.elt.classList.add('cols-2'); else contentDiv.elt.classList.remove('cols-2');
-  list.forEach(({label,on})=>{
+  list.forEach(item=>{
+    const label = (typeof item==='object' && 'label' in item) ? item.label : String(item);
+    const on = (typeof item==='object' && 'on' in item) ? item.on : null;
     const b=createButton(label); b.addClass('btn'); b.parent(contentDiv); b.mousePressed(()=>{on&&on();}); activeButtons.push(b);
   });
   setBar();
