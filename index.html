@@ -13,14 +13,12 @@
     #sketch-holder{position:fixed;inset:0;z-index:0}
     .vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
       background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(0,0,0,.55) 100%)}
-    #ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-      z-index:3;pointer-events:none}
+    #ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:3;pointer-events:none}
 
-    /* —— 无“卡片”外观，仅保留居中布局 —— */
+    /* —— 无卡片，仅保留居中 —— */
     .card{
       pointer-events:auto;width:min(780px,92vw);
-      background:transparent;border:none;border-radius:0;padding:20px 0 16px;
-      box-shadow:none;backdrop-filter:none;
+      background:transparent;border:none;padding:20px 0 16px;box-shadow:none;backdrop-filter:none;
     }
 
     .title{
@@ -32,23 +30,20 @@
     .row{display:grid;gap:10px}
     .row.cols-2{grid-template-columns:1fr 1fr}
 
-    /* —— 选项做成纯文字行：无边框无底色 —— */
+    /* —— 纯文字按钮：无边框、无底色 —— */
     .btn{
-      appearance:none;-webkit-appearance:none;
-      background:transparent;border:none;border-radius:0;
+      appearance:none;-webkit-appearance:none;background:transparent;border:none;border-radius:0;
       color:#ffd6d6;padding:6px 2px;text-align:left;cursor:pointer;
       font:inherit;font-size:clamp(18px,2.2vw,24px);line-height:1.5;
       outline:none;transition:opacity .15s ease, transform .06s ease;
-      opacity:.9; display:block;             /* 防止被挤瘪 */
-      text-shadow:0 0 10px rgba(0,0,0,.35);  /* 叠在摄像头上更清晰 */
+      opacity:.92;display:block;text-shadow:0 0 10px rgba(0,0,0,.35);
     }
     .btn:hover{opacity:1;transform:translateY(-1px)}
     .btn:focus-visible{text-decoration:underline;text-underline-offset:3px}
 
     .input{
-      width:100%;background:transparent;color:#fff;
-      border:none;border-bottom:1px dashed rgba(255,80,80,.45);
-      padding:8px 4px;outline:none;font-size:18px
+      width:100%;background:transparent;color:#fff;border:none;
+      border-bottom:1px dashed rgba(255,80,80,.45);padding:8px 4px;outline:none;font-size:18px
     }
 
     .progress{height:6px;width:100%;background:#171717;border-radius:999px;overflow:hidden;margin:0 0 8px}
@@ -63,7 +58,7 @@
       <div class="progress"><div class="bar" id="bar"></div></div>
       <div class="title" id="title">请在下方输入你的名字：</div>
       <div class="row" id="content"></div>
-      <!-- ✂️ 已删除题数文本 -->
+      <!-- ✂️ 无题数文本 -->
     </div>
   </main>
 
@@ -80,7 +75,7 @@ function paramsByProgress(n){
            chroma:int(lerp(0,140,e)), haze:lerp(14,0,e) };
 }
 
-/* ===== 题库（与你提供的内容一致） ===== */
+/* ===== 题库（与你给的一致） ===== */
 const YES='是', NO='否';
 
 const A_QUESTIONS = [
@@ -309,7 +304,7 @@ function applyGlitchProgressive(g, p){
     for(let y=off; y<g.height; y+=gap){ if (y%(gap*2)===0) g.rect(0,y,g.width,2); } }
 }
 
-/* ===== 问卷逻辑（A 命中→直接 D；A 全否→C1→B） ===== */
+/* ===== 问卷逻辑 ===== */
 let stage='intro', nameValue='';
 let aIndex=0, pendingAAnchor=false, pendingASuppIndex=-1;
 let bIndex=0, pendingBSuppIndex=-1;
@@ -318,14 +313,13 @@ const answers={};
 
 let activeButtons=[]; let inputEl, startBtn;
 
-/* 去编号：渲染时把前缀如“A1.”“A1a.”“AA2.”“B1.”“C1.”“D1.”去掉 */
-function stripLeadingId(s){
-  return String(s).replace(/^[A-Z]{1,2}\d+[a-z]?\.?\s*/,'');
-}
+/* 去编号显示：把 A1./A1a./AA2. 等前缀干掉 */
+function stripLeadingId(s){ return String(s).replace(/^[A-Z]{1,2}\d+[a-z]?\.?\s*/,''); }
 
 function clearUI(){
   activeButtons.forEach(b=>b.remove());
-  activeButtons=[]; if(inputEl){inputEl.remove();inputEl=null;}
+  activeButtons=[];
+  if(inputEl){inputEl.remove();inputEl=null;}
   if(startBtn){startBtn.remove();startBtn=null;}
 }
 function setBar(){ const pct=Math.min(100, Math.round((totalAsked/13)*100)); barDiv.elt.style.width=pct+'%'; }
@@ -333,11 +327,14 @@ function recordAnswer(qid,val){ answers[qid]=val; totalAsked++; setBar(); }
 
 // Intro
 function renderIntro(){
-  stage='intro'; titleDiv.html('请在下方输入你的名字：'); clearUI(); 
-  contentDiv.elt.className = 'row cols-2';
+  stage='intro'; titleDiv.html('请在下方输入你的名字：'); clearUI();
+  contentDiv.elt.className='row cols-2';
   inputEl=createInput(''); inputEl.addClass('input'); inputEl.parent(contentDiv);
   startBtn=createButton('开始答题'); startBtn.addClass('btn'); startBtn.parent(contentDiv); activeButtons.push(startBtn);
-  startBtn.mousePressed(()=>{ const v=inputEl.value().trim(); if(!v) return; nameValue=v; contentDiv.elt.className='row'; goA(); });
+  startBtn.mousePressed(()=>{
+    const v=inputEl.value().trim(); if(!v) return;
+    nameValue=v; contentDiv.elt.className='row'; goA();
+  });
   setBar();
 }
 
@@ -346,26 +343,38 @@ function goA(){ stage='A'; clearUI(); pendingAAnchor=false; pendingASuppIndex=-1
 function renderA(){
   const q=A_QUESTIONS[aIndex];
   if(!q){ return goC1(); }
+
+  // —— 主问 / 锚点问 / 补充问 分支
   if(!pendingAAnchor && pendingASuppIndex===-1){
     titleDiv.html(stripLeadingId(q.main));
     renderOptions([{label:YES,on:()=>onAMain(q,YES)},{label:NO,on:()=>onAMain(q,NO)}],2);
-  }else if(pendingAAnchor && pendingASuppIndex===-1){
+    return;
+  }
+  if(pendingAAnchor && pendingASuppIndex===-1){
     titleDiv.html(stripLeadingId(q.anchor));
     renderOptions([{label:YES,on:()=>onAAnchor(q,YES)},{label:NO,on:()=>onAAnchor(q,NO)}],2);
-  }else{
-    const s=q.supplements[pendingASuppIndex];
-    titleDiv.html(stripLeadingId(s.text));
-    const opts = s.options.map(opt=>{
-      if(typeof opt==='object'){
-        return {label:opt.label, on:()=>onASupp(q,s,opt)};
-      }else{
-        return {label:opt, on:()=>onASupp(q,s,opt)};
-      }
-    });
-    renderOptions(opts,1);
+    return;
   }
+
+  // —— 补充问：边界保护，防止越界导致“只有题干没有选项”
+  if(pendingASuppIndex<0 || pendingASuppIndex>=q.supplements.length){
+    pendingASuppIndex=-1;
+    return questionCountCheck();
+  }
+  const s=q.supplements[pendingASuppIndex];
+  titleDiv.html(stripLeadingId(s.text));
+  const opts = (s.options||[]).map(opt=>{
+    return (typeof opt==='object')
+      ? {label:opt.label, on:()=>onASupp(q,s,opt)}
+      : {label:String(opt), on:()=>onASupp(q,s,opt)};
+  });
+  renderOptions(opts,1);
 }
-function onAMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingAAnchor=true; } else { aIndex++; } clearUI(); renderA(); }
+function onAMain(q,ans){
+  recordAnswer(q.id,ans);
+  if(ans===YES){ pendingAAnchor=true; } else { aIndex++; }
+  clearUI(); renderA();
+}
 function onAAnchor(q,ans){
   recordAnswer(q.anchorId,ans);
   if(ans===YES){ identityCount++; pendingAAnchor=false; pendingASuppIndex=0; }
@@ -378,37 +387,45 @@ function onASupp(q,s,choice){
   pendingASuppIndex++;
   if(pendingASuppIndex>=q.supplements.length){
     pendingASuppIndex=-1;
-    return questionCountCheck();
+    return questionCountCheck(); // 命中 A：补充问结束后直接转 D
   }
   clearUI(); renderA();
 }
 
 // C1：只有当 A1–A6 主问题全否时触发，然后必进 B
 function goC1(){ stage='C1'; clearUI(); titleDiv.html(stripLeadingId(C1.text));
-  renderOptions(C1.options.map(opt=>({label:opt,on:()=>{recordAnswer(C1.id,opt); goB();}})),1); }
+  renderOptions(C1.options.map(opt=>({label:opt,on:()=>{recordAnswer(C1.id,opt); goB();}})),1);
+}
 
 // B：只在 A 全否的情况下才会进入；命中一个焦虑原型（补充问完）→ 数量检验
 function goB(){ stage='B'; clearUI(); pendingBSuppIndex=-1; renderB(); }
 function renderB(){
   const q=B_QUESTIONS[bIndex];
   if(!q){ return questionCountCheck(); }
+
   if(pendingBSuppIndex===-1){
     titleDiv.html(stripLeadingId(q.main));
     renderOptions([{label:YES,on:()=>onBMain(q,YES)},{label:NO,on:()=>onBMain(q,NO)}],2);
-  }else{
-    const s=q.supplements[pendingBSuppIndex];
-    titleDiv.html(stripLeadingId(s.text));
-    const opts = s.options.map(opt=>{
-      if(typeof opt==='object'){
-        return {label:opt.label, on:()=>onBSupp(q,s,opt)};
-      }else{
-        return {label:opt, on:()=>onBSupp(q,s,opt)};
-      }
-    });
-    renderOptions(opts,1);
+    return;
   }
+
+  if(pendingBSuppIndex<0 || pendingBSuppIndex>=q.supplements.length){
+    pendingBSuppIndex=-1; return questionCountCheck();
+  }
+  const s=q.supplements[pendingBSuppIndex];
+  titleDiv.html(stripLeadingId(s.text));
+  const opts=(s.options||[]).map(opt=>{
+    return (typeof opt==='object')
+      ? {label:opt.label, on:()=>onBSupp(q,s,opt)}
+      : {label:String(opt), on:()=>onBSupp(q,s,opt)};
+  });
+  renderOptions(opts,1);
 }
-function onBMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingBSuppIndex=0; } else { bIndex++; } clearUI(); renderB(); }
+function onBMain(q,ans){
+  recordAnswer(q.id,ans);
+  if(ans===YES){ pendingBSuppIndex=0; } else { bIndex++; }
+  clearUI(); renderB();
+}
 function onBSupp(q,s,choice){
   const value = (typeof choice==='object' && 'fill' in choice) ? choice.fill : choice;
   recordAnswer(s.id, value);
@@ -438,18 +455,25 @@ function goDone(){
     const payload={ name:nameValue, answers, identityCount, anxietyCount, totalAsked };
     if(USE_LOCAL_STORAGE){ try{ localStorage.setItem('quizPayload', JSON.stringify(payload)); }catch(e){} }
     if(RESULT_URL && RESULT_URL.length>3){ window.location.href = RESULT_URL; }
-    else { alert('已收集到 13 题答案。\n提示：你还没有设置结果页链接 RESULT_URL；已把数据写入 localStorage("quizPayload")。'); }
+    else { alert('已收集到 13 题答案。\n提示：还没有设置结果页链接 RESULT_URL；数据已写入 localStorage("quizPayload")。'); }
   });
   setBar();
 }
 
-/* —— 纯文字选项渲染：彻底清空并重置类名，避免选项消失 —— */
+/* —— 纯文字选项渲染：先清空，强制重置类名，避免残留影响 —— */
 function renderOptions(list, cols){
-  // 彻底清理旧节点（避免残留）
-  activeButtons.forEach(b=>b.remove());
-  activeButtons=[];
+  // 移除旧按钮 & 清空容器
+  activeButtons.forEach(b=>b.remove()); activeButtons=[];
   contentDiv.html('');
+  // 强制重置类名（防止 cols-2 残留）
   contentDiv.elt.className = 'row' + (cols===2 ? ' cols-2' : '');
+
+  // 若 list 异常为空，直接给出一个兜底（防止出现“只有题干没有选项”）
+  if(!list || !list.length){
+    console.warn('renderOptions: 空选项，兜底为继续');
+    const b=createButton('继续'); b.addClass('btn'); b.parent(contentDiv);
+    b.mousePressed(()=>{ questionCountCheck(); }); activeButtons.push(b); setBar(); return;
+  }
 
   list.forEach(item=>{
     const label = (typeof item==='object' && 'label' in item) ? item.label : String(item);
@@ -461,6 +485,18 @@ function renderOptions(list, cols){
   });
   setBar();
 }
+
+/* —— D 题库（原样） —— */
+const D_QUESTIONS = [
+  { id:'D1', text:'D1. 你更害怕哪一种门？', options:['打不开的门','自己打开的门','一直敲的门']},
+  { id:'D2', text:'D2. 哪一种光最让你不安？', options:['闪烁灯管','手机微光','电梯顶灯']},
+  { id:'D3', text:'D3. 哪种气味让你想逃离？', options:['潮霉','铁锈','消毒水']},
+  { id:'D4', text:'D4. 当房间忽然安静时，你会？', options:['停住不动','立刻说话','打开音乐']},
+  { id:'D5', text:'D5. 哪个时间点最不对劲？', options:['03:17','04:44','05:01']},
+  { id:'D6', text:'D6. 你最怕哪种脚步？', options:['跟在后面','从门外经过','从楼上停住']},
+  { id:'D7', text:'D7. 你会把镜子放在哪里？', options:['窗边','柜门内侧','床对面']},
+  { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名','电流嗡嗡']},
+];
 </script>
 </body>
 </html>
