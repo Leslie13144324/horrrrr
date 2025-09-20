@@ -15,20 +15,40 @@
       background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(0,0,0,.55) 100%)}
     #ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
       z-index:3;pointer-events:none}
-    /* ✂️ 去掉卡片的边框、背景与阴影，仅保留布局宽度 */
+
+    /* —— 无“卡片”外观，仅保留居中布局 —— */
     .card{
       pointer-events:auto;width:min(780px,92vw);
       background:transparent;border:none;border-radius:0;padding:20px 0 16px;
       box-shadow:none;backdrop-filter:none;
     }
-    .title{font-size:20px;line-height:1.6;color:#fff2f2;margin-bottom:16px}
+
+    .title{
+      font-size:clamp(22px,3.2vw,34px);
+      line-height:1.6;color:#fff2f2;margin-bottom:16px;
+      text-shadow:0 0 18px rgba(255,255,255,.07);
+    }
+
     .row{display:grid;gap:10px}
     .row.cols-2{grid-template-columns:1fr 1fr}
-    .btn{background:rgba(0,0,0,.55);color:#ffd6d6;border:1px solid rgba(255,80,80,.6);
-      border-radius:12px;padding:10px 12px;text-align:left;cursor:pointer;transition:.15s ease}
-    .btn:hover{border-color:#ff9b9b;color:#fff;background:rgba(0,0,0,.45);transform:translateY(-1px)}
-    .input{width:100%;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,80,80,.55);
-      border-radius:12px;padding:10px 12px;outline:none}
+
+    /* —— 选项做成纯文字行：无边框无底色 —— */
+    .btn{
+      appearance:none;-webkit-appearance:none;
+      background:transparent;border:none;border-radius:0;
+      color:#ffd6d6;padding:6px 2px;text-align:left;cursor:pointer;
+      font:inherit;font-size:clamp(18px,2.2vw,24px);line-height:1.5;
+      outline:none;transition:opacity .15s ease, transform .06s ease;
+      opacity:.9
+    }
+    .btn:hover{opacity:1;transform:translateY(-1px)}
+    .btn:focus-visible{text-decoration:underline;text-underline-offset:3px}
+    .input{
+      width:100%;background:transparent;color:#fff;
+      border:none;border-bottom:1px dashed rgba(255,80,80,.45);
+      padding:8px 4px;outline:none;font-size:18px
+    }
+
     .progress{height:6px;width:100%;background:#171717;border-radius:999px;overflow:hidden;margin:0 0 8px}
     .bar{height:100%;background:var(--red);width:0%;transition:width .25s ease}
   </style>
@@ -41,7 +61,7 @@
       <div class="progress"><div class="bar" id="bar"></div></div>
       <div class="title" id="title">请在下方输入你的名字：</div>
       <div class="row" id="content"></div>
-      <!-- 底部累计题数已移除 -->
+      <!-- ✂️ 已删除题数文本 -->
     </div>
   </main>
 
@@ -50,7 +70,7 @@
 const RESULT_URL = "./story.html";
 const USE_LOCAL_STORAGE = true;
 
-/* ===== 故障强度随题数提升 ===== */
+/* ===== 故障强度随题数提升（原样） ===== */
 function paramsByProgress(n){
   const t = constrain(n/13, 0, 1), e = t*t*(3-2*t);
   return { amp:lerp(0,60,e), slices:int(lerp(0,48,e)), blocks:int(lerp(0,28,e)),
@@ -58,7 +78,7 @@ function paramsByProgress(n){
            chroma:int(lerp(0,140,e)), haze:lerp(14,0,e) };
 }
 
-/* ===== 题库（与你贴的一致） ===== */
+/* ===== 题库（与你提供的内容一致） ===== */
 const YES='是', NO='否';
 
 const A_QUESTIONS = [
@@ -220,7 +240,7 @@ const B_QUESTIONS = [
     ] },
 ];
 
-/* ===== 画布 & 背景（保持不变） ===== */
+/* ===== 画布 & 背景（原样） ===== */
 let video, pg, camReady=false;
 let totalAsked=0, contentDiv,titleDiv,barDiv;
 
@@ -251,6 +271,7 @@ function draw(){
 
     const p = paramsByProgress(totalAsked);
     if (p.haze > 0) { pg.filter(BLUR, p.haze/12); pg.fill(255, 20); pg.noStroke(); pg.rect(0,0,pg.width,pg.height); }
+
     applyGlitchProgressive(pg, p); image(pg,0,0,width,height);
 
     if (p.chroma > 0){
@@ -295,7 +316,7 @@ const answers={};
 
 let activeButtons=[]; let inputEl, startBtn;
 
-/* 去编号：渲染时清掉前缀（A1./A1a./AA2./B1./C1./D1.） */
+/* 去编号：渲染时把前缀如“A1.”“A1a.”“AA2.”“B1.”“C1.”“D1.”去掉 */
 function stripLeadingId(s){
   return String(s).replace(/^[A-Z]{1,2}\d+[a-z]?\.?\s*/,'');
 }
@@ -317,7 +338,7 @@ function renderIntro(){
 function goA(){ stage='A'; clearUI(); pendingAAnchor=false; pendingASuppIndex=-1; renderA(); }
 function renderA(){
   const q=A_QUESTIONS[aIndex];
-  if(!q){ return goC1(); }
+  if(!q){ return goC1(); } // A 主问题全部否 → 走 C1 → B
   if(!pendingAAnchor && pendingASuppIndex===-1){
     titleDiv.html(stripLeadingId(q.main));
     renderOptions([{label:YES,on:()=>onAMain(q,YES)},{label:NO,on:()=>onAMain(q,NO)}],2);
@@ -355,11 +376,11 @@ function onASupp(q,s,choice){
   clearUI(); renderA();
 }
 
-// C1
+// C1：只有当 A1–A6 主问题全否时触发，然后必进 B
 function goC1(){ stage='C1'; clearUI(); titleDiv.html(stripLeadingId(C1.text));
   renderOptions(C1.options.map(opt=>({label:opt,on:()=>{recordAnswer(C1.id,opt); goB();}})),1); }
 
-// B
+// B：只在 A 全否的情况下才会进入；命中一个焦虑原型（补充问完）→ 数量检验
 function goB(){ stage='B'; clearUI(); pendingBSuppIndex=-1; renderB(); }
 function renderB(){
   const q=B_QUESTIONS[bIndex];
@@ -415,7 +436,7 @@ function goDone(){
   setBar();
 }
 
-// 通用渲染
+// 通用渲染（纯文字按钮）
 function renderOptions(list, cols){
   contentDiv.elt.classList.remove('cols-2');
   contentDiv.elt.classList.add('row');
