@@ -15,9 +15,12 @@
       background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(0,0,0,.55) 100%)}
     #ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
       z-index:3;pointer-events:none}
-    .card{pointer-events:auto;width:min(780px,92vw);border:1px solid rgba(255,60,60,.45);
-      background:rgba(0,0,0,.55);border-radius:18px;padding:20px 20px 16px;
-      box-shadow:0 10px 40px rgba(255,0,0,.10);backdrop-filter:blur(2px)}
+    /* ✂️ 去掉卡片的边框、背景与阴影，仅保留布局宽度 */
+    .card{
+      pointer-events:auto;width:min(780px,92vw);
+      background:transparent;border:none;border-radius:0;padding:20px 0 16px;
+      box-shadow:none;backdrop-filter:none;
+    }
     .title{font-size:20px;line-height:1.6;color:#fff2f2;margin-bottom:16px}
     .row{display:grid;gap:10px}
     .row.cols-2{grid-template-columns:1fr 1fr}
@@ -38,7 +41,7 @@
       <div class="progress"><div class="bar" id="bar"></div></div>
       <div class="title" id="title">请在下方输入你的名字：</div>
       <div class="row" id="content"></div>
-      <!-- ✂️ 已移除底部“累计题数 / 目标 13：0 / 13” -->
+      <!-- 底部累计题数已移除 -->
     </div>
   </main>
 
@@ -55,7 +58,7 @@ function paramsByProgress(n){
            chroma:int(lerp(0,140,e)), haze:lerp(14,0,e) };
 }
 
-/* ===== 题库（沿用你给的这版文案） ===== */
+/* ===== 题库（与你贴的一致） ===== */
 const YES='是', NO='否';
 
 const A_QUESTIONS = [
@@ -217,18 +220,6 @@ const B_QUESTIONS = [
     ] },
 ];
 
-/* —— D 组：补足到 13 题 —— */
-const D_QUESTIONS = [
-  { id:'D1', text:'D1. 你更害怕哪一种门？', options:['打不开的门','自己打开的门','一直敲的门']},
-  { id:'D2', text:'D2. 哪一种光最让你不安？', options:['闪烁灯管','手机微光','电梯顶灯']},
-  { id:'D3', text:'D3. 哪种气味让你想逃离？', options:['潮霉','铁锈','消毒水']},
-  { id:'D4', text:'D4. 当房间忽然安静时，你会？', options:['停住不动','立刻说话','打开音乐']},
-  { id:'D5', text:'D5. 哪个时间点最不对劲？', options:['03:17','04:44','05:01']},
-  { id:'D6', text:'D6. 你最怕哪种脚步？', options:['跟在后面','从门外经过','从楼上停住']},
-  { id:'D7', text:'D7. 你会把镜子放在哪里？', options:['窗边','柜门内侧','床对面']},
-  { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名','电流嗡嗡']},
-];
-
 /* ===== 画布 & 背景（保持不变） ===== */
 let video, pg, camReady=false;
 let totalAsked=0, contentDiv,titleDiv,barDiv;
@@ -260,7 +251,6 @@ function draw(){
 
     const p = paramsByProgress(totalAsked);
     if (p.haze > 0) { pg.filter(BLUR, p.haze/12); pg.fill(255, 20); pg.noStroke(); pg.rect(0,0,pg.width,pg.height); }
-
     applyGlitchProgressive(pg, p); image(pg,0,0,width,height);
 
     if (p.chroma > 0){
@@ -305,16 +295,13 @@ const answers={};
 
 let activeButtons=[]; let inputEl, startBtn;
 
-/* 去编号：渲染到界面时，把前缀如“A1.”“A1a.”“AA2.”“B1.”“C1.”“D1.”去掉 */
+/* 去编号：渲染时清掉前缀（A1./A1a./AA2./B1./C1./D1.） */
 function stripLeadingId(s){
   return String(s).replace(/^[A-Z]{1,2}\d+[a-z]?\.?\s*/,'');
 }
 
 function clearUI(){ activeButtons.forEach(b=>b.remove()); activeButtons=[]; if(inputEl){inputEl.remove();inputEl=null;} if(startBtn){startBtn.remove();startBtn=null;} }
-function setBar(){
-  const pct=Math.min(100, Math.round((totalAsked/13)*100));
-  barDiv.elt.style.width=pct+'%';
-}
+function setBar(){ const pct=Math.min(100, Math.round((totalAsked/13)*100)); barDiv.elt.style.width=pct+'%'; }
 function recordAnswer(qid,val){ answers[qid]=val; totalAsked++; setBar(); }
 
 // Intro
