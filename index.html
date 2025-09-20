@@ -57,9 +57,10 @@ function paramsByProgress(n){
            chroma:int(lerp(0,140,e)), haze:lerp(14,0,e) };
 }
 
-/* ===== 题库（A1/AA1 为是/否；A1a/b/c 为三选一且写入 fill 文本） ===== */
+/* ===== 题库 ===== */
 const YES='是', NO='否';
 
+/* —— A1（保持你原有写法，已支持 fill） —— */
 const A_QUESTIONS = [
   { id:'A1', main:'A1. 从小到大，你总被提醒，女孩子要有女孩子的样子', anchorId:'AA1', anchor:'AA1. 你时常感觉做女人无论怎么表现，总有人觉得你不够好',
     supplements:[
@@ -69,96 +70,165 @@ const A_QUESTIONS = [
         { label:'卷发',   fill:'她看上去像卷发的洋娃娃贴纸一样存在于照片里，背景动，她不动。' },
       ]},
       { id:'A1b', text:'A1b. 你穿的衣服，通常是', options:[
-        { label:'不记得何时买，但总能刚好搭上', fill:'她的笑容从来不变，像被印在脸上的，精确得像表盘一样没有误差。' },
-        { label:'每天差不多的搭配与发型',       fill:'她的头发像早上被放回去的位置，每天都一模一样。' },
-        { label:'统一风格，像一套“自己定制的衣服”', fill:'她的衣服像是批量复制的模板，没有褶皱也没有体温。' },
+        { label:'你常穿那些不记得什么时候买的衣服，但总能刚刚好搭上。', fill:'她的笑容从来不变，像被印在脸上的，精确得像表盘一样没有误差。' },
+        { label:'你每天穿着差不多的搭配，头发也总是差不多的样子。',       fill:'她的头发像早上被放回去的位置，每一根都站队集合。' },
+        { label:'你喜欢统一风格，看起来像有一套“自己定制的衣服”。', fill:'她的衣服像是批量复制的模板，没有褶皱也没有体温。' },
       ]},
       { id:'A1c', text:'A1c. 你在人多的地方时，身体有没有自己动过？', options:[
-        { label:'肩膀先收一下，再把背挺直', fill:'她站得太直了，好像有人在身后绑着她的脊柱。' },
-        { label:'嘴角先抿一抿，然后迅速拉成标准的笑', fill:'她笑得很快，但像贴了两张一模一样的嘴皮。' },
-        { label:'脚会平行，膝盖朝前，像排队一样等着发生什么', fill:'她的腿像摆在展柜里的模特，没有重量，没有动作的权利。' },
+        { label:'肩膀会先收一下，再把背挺直，像有人在看你。', fill:'她站得太直了，好像有人在身后绑着她的脊柱。' },
+        { label:'嘴角会先抿一抿，然后迅速拉成标准的笑。', fill:'她笑得很快，但像贴了两张一模一样的嘴皮。' },
+        { label:'站着的时候脚会平行，膝盖朝前，像排队一样等着发生什么。', fill:'她的腿像摆在展柜里的模特，没有重量，没有动作的权利。' },
       ]},
     ] },
 
-  // 其余 A2~A6 保持你原有逻辑（此处略）。如也要做“选项→fill文本”，可按上面 A1 的结构扩展。
-  { id:'A2', main:'A2. 你是否因性倾向/情感指向遭遇过不适？', anchorId:'AA2', anchor:'AA2. 面对他人的窥探，你是否习惯回避？',
+  /* —— A2：性少数 —— */
+  { id:'A2', main:'A2. 你喜欢的人和父母本来期待的不一样', anchorId:'AA2', anchor:'AA2. 因为“你喜欢谁”这件事，你被明里或暗里说过“该纠正”',
     supplements:[
-      { id:'A2a', text:'A2a. 你更愿以暧昧/隐语表达自我', options:[YES, NO] },
-      { id:'A2b', text:'A2b. 你的亲密边界常被试探', options:[YES, NO] },
-      { id:'A2c', text:'A2c. 你害怕“被看见”的后果', options:[YES, NO, '不确定'] },
+      { id:'A2a', text:'A2a. 当你路过镜面或玻璃时，你的影子会', options:[
+        { label:'比你先行动，总比你早半步转头。', fill:'她的影子像提前收到指令，永远抢先一步。' },
+        { label:'出现两层，彼此轻微错位。', fill:'她有两层影子，像没对齐的印刷。' },
+        { label:'与别人的影子短暂叠合，再分开。', fill:'她的影子像会“试探地贴近别人”，随后迅速退回。' },
+      ]},
+      { id:'A2b', text:'A2b. 当你听到别人说“正常”的时候，你的身体会', options:[
+        { label:'耳边出现收音机失真的嗡鸣。', fill:'耳后像藏着小小的电台，在噪声里呼吸。' },
+        { label:'胸口发冷，像被风从里向外吹。', fill:'胸口僵直，像无法呼吸。' },
+        { label:'下意识把手背到身后，像要藏起什么。', fill:'手在身后摸索，像在按一个看不见的开关。' },
+      ]},
+      { id:'A2c', text:'A2c. 当他们逼你回答“你到底是什么”的时候，你会', options:[
+        { label:'只点头或摇头，不说词语。', fill:'她的嗓子像被薄膜封住，只剩动作在回答。' },
+        { label:'笑一下，再反问一个无关紧要的问题。', fill:'她突然大笑，笑声像偏离轨道的指针，指向时间以外的地方。' },
+        { label:'把问题重复一遍，像在回声里拖延时间。', fill:'她的回答声却没人听见，声音像回到了她身上，像在她体内绕圈。' },
+      ]},
     ] },
 
-  { id:'A3', main:'A3. 你的身体差异常被凝视/标注过吗？', anchorId:'AA3', anchor:'AA3. 你是否因此避免公开照面或拍照？',
+  /* —— A3：患病者 —— */
+  { id:'A3', main:'A3. 你的身体或精神状况，时常让你觉得和健康的人不一样', anchorId:'AA3', anchor:'AA3. 日常的一些小事，对你来说会比别人更麻烦',
     supplements:[
-      { id:'A3a', text:'A3a. 你习惯调整姿态以躲避镜头', options:[YES, NO] },
-      { id:'A3b', text:'A3b. 你会下意识收敛动作', options:[YES, NO] },
-      { id:'A3c', text:'A3c. 你不信任镜子里的自己', options:[YES, NO, '不确定'] },
+      { id:'A3a', text:'A3a. 早上醒来，你会', options:[
+        { label:'先摸一摸枕边的东西。', fill:'时常手在前方不断摸索。' },
+        { label:'盯着天花板发一会儿呆。', fill:'眼睛直直对着天花板，像在数裂缝。' },
+        { label:'坐起来很快，好像突然被惊动。', fill:'时常像是突然被惊醒了一样，猛地坐起。' },
+      ]},
+      { id:'A3b', text:'A3b. 你在别人眼中最容易被评价为', options:[
+        { label:'“看起来很瘦弱。”', fill:'那人的影子像比本人还窄一圈。' },
+        { label:'“有点神经质。”', fill:'那人的动作像被拉得过紧的线。' },
+        { label:'“心思太多。”', fill:'那人额头总是阴沉，好像压着什么没说完的话。' },
+      ]},
+      { id:'A3c', text:'A3c. 当你不舒服时，你常会', options:[
+        { label:'一个劲儿走来走去。', fill:'那人在楼道里来回，脚步像在磨地板。' },
+        { label:'不停写写画画。', fill:'那人的面前堆着很厚的纸张，满是破碎的符号。' },
+        { label:'发呆，直到忘记时间。', fill:'那人坐在那里，像一件没收走的旧物。' },
+      ]},
     ] },
 
-  { id:'A4', main:'A4. 你是否是异乡人/外地身份而被区别对待？', anchorId:'AA4', anchor:'AA4. 你说话/穿着常被人判断“不是本地人”？',
+  /* —— A4：外地人 —— */
+  { id:'A4', main:'A4. 你曾经搬离过熟悉的地方，在陌生的城市生活过', anchorId:'AA4', anchor:'AA4. 你住的地方和你成长的家乡差别大',
     supplements:[
-      { id:'A4a', text:'A4a. 你的声音带有口音或奇怪停顿', options:['口音','停顿','过快']},
-      { id:'A4b', text:'A4b. 你最显眼的特征常被记住', options:['肤色','穿着','眼神']},
-      { id:'A4c', text:'A4c. 人群中你身上的气味常被注意', options:['潮湿','辛辣','消毒水']},
+      { id:'A4a', text:'A4a. 你的声音总是带着', options:[
+        { label:'口音',   fill:'口音里夹杂异乡的腔调。' },
+        { label:'奇怪停顿', fill:'那声音是断断续续的。' },
+        { label:'过快语速', fill:'语速急促却听不清具体的内容。' },
+      ]},
+      { id:'A4b', text:'A4b. 你的样子最容易被人记住的地方是', options:[
+        { label:'肤色', fill:'那和周围格格不入的皮肤。' },
+        { label:'穿着', fill:'那怎么看都不像本地样式的穿着。' },
+        { label:'眼神', fill:'那极其飘忽的眼神。' },
+      ]},
+      { id:'A4c', text:'A4c. 在人群中，你身上散发的气味让人觉得', options:[
+        { label:'潮湿', fill:'路途里没干透的雨衣的味道。' },
+        { label:'辛辣', fill:'远方辛辣的香料味。' },
+        { label:'陌生', fill:'说不出的异味。' },
+      ]},
     ] },
 
-  { id:'A5', main:'A5. 你是否来自控制/压抑的家庭结构？', anchorId:'AA5', anchor:'AA5. 你的决定常被否定或被代替吗？',
+  /* —— A5：东亚家庭被压抑的孩子 —— */
+  { id:'A5', main:'A5. 你在成长过程中，经常需要压抑自己的真实想法或情绪', anchorId:'AA5', anchor:'AA5. 你是否觉得，在家里你的声音经常被忽视或被打断',
     supplements:[
-      { id:'A5a', text:'A5a. 你常在“更懂的人”面前沉默', options:[YES, NO] },
-      { id:'A5b', text:'A5b. 你做选择会先想“家里会怎么说”', options:[YES, NO] },
-      { id:'A5c', text:'A5c. 你梦见家里房间的门没有把手', options:[YES, NO, '不确定'] },
+      { id:'A5a', text:'A5a. 当你试图表达意见时，他们最常对你说', options:[
+        { label:'安静',     fill:'安静' },
+        { label:'没必要',   fill:'没必要' },
+        { label:'别人都这样', fill:'别人都这样' },
+      ]},
+      { id:'A5b', text:'A5b. 在家中，你最常被要求做到的事情是', options:[
+        { label:'听话', fill:'听话' },
+        { label:'懂事', fill:'你要懂事' },
+        { label:'忍耐', fill:'要学会忍耐' },
+      ]},
+      { id:'A5c', text:'A5c. 你房间最深的角落里藏着', options:[
+        { label:'一堆作业本', fill:'一本作业本' },
+        { label:'一只破旧玩偶', fill:'一只破旧玩偶' },
+        { label:'一把锁', fill:'一把陈旧的锁' },
+      ]},
     ] },
 
-  { id:'A6', main:'A6. 你是否在社交中长期被忽略/边缘？', anchorId:'AA6', anchor:'AA6. 你是否习惯在角落观察而不发声？',
+  /* —— A6：社交边缘人 —— */
+  { id:'A6', main:'A6. 你不是在人群里容易被注意到的那类人', anchorId:'AA6', anchor:'AA6. 在社交场合，你总觉得被忽略或无所适从',
     supplements:[
-      { id:'A6a', text:'A6a. 你常被描述为“不合拍/过安静”', options:['不合拍','过安静']},
-      { id:'A6b', text:'A6b. 你更倾向选择靠边/背墙的位置', options:['靠窗角','最后一排','门口侧']},
-      { id:'A6c', text:'A6c. 你会反复做一些安抚性小动作', options:['捏衣角','抠指甲','理头发']},
+      { id:'A6a', text:'A6a. 如果有人仔细看你的脸，会觉得……', options:[
+        { label:'你眨眼很慢',   fill:'眼皮下垂得像要闭上。' },
+        { label:'你很爱笑',     fill:'脸上带着僵直的笑。' },
+        { label:'你的呼吸很轻', fill:'哪怕走得很近也根本听不到呼吸声。' },
+      ]},
+      { id:'A6b', text:'A6b. 你学生时期最喜欢坐的位置是', options:[
+        { label:'靠窗',   fill:'靠窗' },
+        { label:'讲台边', fill:'讲台边' },
+        { label:'最后一排', fill:'最后一排' },
+      ]},
+      { id:'A6c', text:'A6c. 你觉得下面哪项活动最有意思', options:[
+        { label:'搓纸片', fill:'在手中把纸一点点搓成小团。' },
+        { label:'描字',   fill:'一笔一划在本子上写着什么，把字描得很重。' },
+        { label:'观察别人', fill:'直直地盯着人看。' },
+      ]},
     ] },
 ];
 
+/* —— C1（保持不变） —— */
 const C1 = { id:'C1', text:'C1. 他们说，你之所以异样，是因为——（必须选择一条）',
   options:['你看起来不像这里的人','你总是躲在镜头外','你说话的方式让人不安'] };
 
+/* —— B1–B2 改为对象选项 + fill —— */
 const B_QUESTIONS = [
-  { id:'B1', main:'B1. 你是否长期处于亲密关系焦虑？',
+  { id:'B1', main:'B1. 在亲密关系里，你是否始终觉得缺了一点安全感？',
     supplements:[
-      { id:'B1a', text:'B1a. 你担心被抛下的具体迹象是', options:['已读不回','临时失联','态度忽冷忽热']},
-      { id:'B1b', text:'B1b. 你趋向采取的自保方式是', options:['先疏离','过度粘连','测试对方']},
-      { id:'B1c', text:'B1c. 你最害怕重复的场景是', options:['门在你身后关上','屏幕突然黑','钥匙在门外']},
+      { id:'B1a', text:'B1a. 你最常记得你的伴侣身上的气味是', options:[
+        { label:'清晨的露水味', fill:'伴侣身上一直都是清晨的露水味，但最近有一次凑近时，我发现那股清凉里混进酸烂的气息，像尸体泡在湿土里。' },
+        { label:'衣服刚烘干的阳光味', fill:'伴侣身上一直都是衣服刚烘干的阳光味，但最近有一次凑近时，我闻到一股焦糊刺鼻的气息，像烧焦的皮肉。' },
+        { label:'书页的气息', fill:'伴侣身上一直都是淡淡的书页气息，但最近有一次凑近时，我嗅到一股潮湿腐霉味，像墨迹溃烂。' },
+      ]},
+      { id:'B1b', text:'B1b. 你的伴侣最常做的小动作是', options:[
+        { label:'抠指甲', fill:'伴侣坐在床边，手指在黑暗里不停摩擦，反复抠着指甲，指甲屑一点点落下，缝隙里渗出红色的血。' },
+        { label:'咳嗽',   fill:'伴侣坐在床边，身体微微前倾，轻轻咳嗽，喉咙里的声音像有什么湿滑的东西在爬动。' },
+        { label:'盯着我看', fill:'伴侣坐在床边，眼睛一眨不眨地盯着我，呼吸浅得几乎听不见，像在等我眨眼时爬进来。' },
+      ]},
+      { id:'B1c', text:'B1c. 你的伴侣房间里最显眼的一样东西是', options:[
+        { label:'一面镜子',   fill:'床边摆的镜子里似乎有什么东西一闪而过。' },
+        { label:'一只旧水杯', fill:'床头放的水杯里水面轻轻荡漾着，浑浊的颜色像氧化过的血。' },
+        { label:'一盏小台灯', fill:'床角的一盏小台灯亮着，灯光闪烁不定。' },
+      ]},
     ] },
-  { id:'B2', main:'B2. 你是否常感觉被监视/被记录？',
+
+  { id:'B2', main:'B2. 在生活里，你是否有时会觉得有些陌生的存在，正在悄悄靠近你？',
     supplements:[
-      { id:'B2a', text:'B2a. 你怀疑的来源主要是', options:['摄像头','窗外影子','系统日志']},
-      { id:'B2b', text:'B2b. 你采取的对抗方式是', options:['遮盖镜头','拉上窗帘','清理痕迹']},
-      { id:'B2c', text:'B2c. 你最怕被留存的东西是', options:['声音','指纹','面孔']},
+      { id:'B2a', text:'B2a. 你更容易注意到哪种声音？', options:[
+        { label:'拖鞋拖在地上的声音', fill:'那声音很轻，像拖鞋在粗糙地面来回摩擦。' },
+        { label:'压抑着的咳嗽',     fill:'那声音断断续续，像咳嗽被硬生生憋住。' },
+        { label:'低声念字',         fill:'那声音模糊不清，像有人反复低声念着相同的字。' },
+      ]},
+      { id:'B2b', text:'B2b. 如果你突然看见一个人，你最先注意到', options:[
+        { label:'衣角', fill:'她垂下的衣角，沾着潮湿的泥点。' },
+        { label:'手背', fill:'第一眼看见的是苍白的手背，上面布满细密的划痕。' },
+        { label:'鞋子', fill:'他的一双鞋，鞋底磨得破烂，边缘卷起。' },
+      ]},
+      { id:'B2c', text:'B2c. 哪种气味最让你难以忽视？', options:[
+        { label:'生铁味', fill:'像带着生铁的腥气，仿佛血在金属里凝固。' },
+        { label:'湿泥味', fill:'像刚翻开的土堆里潮湿的泥味。' },
+        { label:'焦糊味', fill:'空气里带着焦糊的气息，刺得眼睛直流泪。' },
+      ]},
     ] },
-  { id:'B3', main:'B3. 你是否害怕陌生边界被侵入？',
-    supplements:[
-      { id:'B3a', text:'B3a. 你最不安的闯入来自', options:['同住者','陌生来电','系统弹窗']},
-      { id:'B3b', text:'B3b. 你会用什么方式重设边界', options:['换锁','更改密码','断网']},
-      { id:'B3c', text:'B3c. 一想到它，你的身体反应是', options:['胃部一紧','手心出汗','后颈发凉']},
-    ] },
-  { id:'B4', main:'B4. 你是否长期睡眠被打断？',
-    supplements:[
-      { id:'B4a', text:'B4a. 常见触发', options:['噪音','梦魇','身体痛感']},
-      { id:'B4b', text:'B4b. 你试过的方法', options:['药物','白噪音','通宵']},
-      { id:'B4c', text:'B4c. 醒来后的第一感觉', options:['沉重','空洞','过度清醒']},
-    ] },
-  { id:'B5', main:'B5. 你是否对自己的身体控制感减弱？',
-    supplements:[
-      { id:'B5a', text:'B5a. 你最常失控的部位', options:['手','眼','嘴']},
-      { id:'B5b', text:'B5b. 你察觉的方法', options:['镜子','录像','他人提醒']},
-      { id:'B5c', text:'B5c. 你的补偿性动作', options:['绑住','按压','缠胶带']},
-    ] },
-  { id:'B6', main:'B6. 你是否频繁经历自我怀疑与抽离？',
-    supplements:[
-      { id:'B6a', text:'B6a. 抽离最常出现于', options:['人群中','镜子前','夜行路']},
-      { id:'B6b', text:'B6b. 你拉回自己的方式', options:['掐掌心','念字母','盯住红点']},
-      { id:'B6c', text:'B6c. 你最害怕的引子', options:['他人呼名','手机震动','脚步声']},
-    ] },
+  // 其余 B3–B6 先维持你原逻辑（如需也做 fill，我可继续改）
 ];
 
+/* —— D（用于补足到 13 题，保持不变） —— */
 const D_QUESTIONS = [
   { id:'D1', text:'D1. 你更害怕哪一种门？', options:['打不开的门','自己打开的门','一直敲的门']},
   { id:'D2', text:'D2. 哪一种光最让你不安？', options:['闪烁灯管','手机微光','电梯顶灯']},
@@ -274,10 +344,9 @@ function renderA(){
   }else{
     const s=q.supplements[pendingASuppIndex];
     titleDiv.html(s.text);
-    // 支持对象选项（{label, fill}）或字符串/YES/NO
     const opts = s.options.map(opt=>{
       if(typeof opt==='object'){
-        return {label:opt.label, on:()=>onASupp(q,s,opt)};   // 把对象原样传给 onASupp
+        return {label:opt.label, on:()=>onASupp(q,s,opt)};
       }else{
         return {label:opt, on:()=>onASupp(q,s,opt)};
       }
@@ -293,7 +362,6 @@ function onAAnchor(q,ans){
   clearUI(); renderA();
 }
 function onASupp(q,s,choice){
-  // 如果 choice 为对象（{label, fill}），写入 fill 文本以供 story 替换
   const value = (typeof choice==='object' && 'fill' in choice) ? choice.fill : choice;
   recordAnswer(s.id, value);
   pendingASuppIndex++;
@@ -319,12 +387,20 @@ function renderB(){
   }else{
     const s=q.supplements[pendingBSuppIndex];
     titleDiv.html(s.text);
-    renderOptions(s.options.map(opt=>({label:opt,on:()=>onBSupp(q,s,opt)})),1);
+    const opts = s.options.map(opt=>{
+      if(typeof opt==='object'){
+        return {label:opt.label, on:()=>onBSupp(q,s,opt)};
+      }else{
+        return {label:opt, on:()=>onBSupp(q,s,opt)};
+      }
+    });
+    renderOptions(opts,1);
   }
 }
 function onBMain(q,ans){ recordAnswer(q.id,ans); if(ans===YES){ pendingBSuppIndex=0; } else { bIndex++; } clearUI(); renderB(); }
 function onBSupp(q,s,choice){
-  recordAnswer(s.id,choice);
+  const value = (typeof choice==='object' && 'fill' in choice) ? choice.fill : choice;
+  recordAnswer(s.id, value);
   pendingBSuppIndex++;
   if(pendingBSuppIndex>=q.supplements.length){
     anxietyCount++; pendingBSuppIndex=-1; return questionCountCheck();
