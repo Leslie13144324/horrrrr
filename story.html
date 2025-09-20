@@ -25,10 +25,7 @@ else if(bHit){ storyKey=bHit; }
 else if(cHit){ storyKey=cHit; }
 
 /*==================== 故事模板（含标题+正文） ====================*/
-/* 说明：
-   - A1：按你的原文，不强制替换所有“她”（但名字仍用 [Aname] 注入）
-   - A2–A6 / B1–B2：已将故事中的“她/她的/她们”等改写成显式的 [Aname] 形式
-*/
+/* A1 保持原文；A2–A6、B1–B2 中的“她”已全部替换为 [Aname] 形式 */
 const STORIES = {
   A1: {
     title: "那个女人",
@@ -39,7 +36,7 @@ const STORIES = {
 她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`
   },
 
-  /* === A2：性少数（全部用参与者名字） === */
+  /* === A2：性少数 === */
   A2: {
     title: "影子靠得太近",
     text: `刚认识[Aname]的时候，我只觉得[Aname]人很好。[Aname]总是替我占座，记得我爱吃什么，把细枝末节都放在心上。我和[Aname]是同一个性别，所以我以为，这只是普通朋友的关心。可渐渐地，我发现哪里不对。[Aname]看我的时间太久了，[A2a特征]
@@ -111,11 +108,11 @@ const STORIES = {
   /* === B1：亲密关系焦虑 === */
   B1: {
     title: "伴侣不在时的房间",
-    text: `我一直以为自己遇到了完美的伴侣。[Aname]总是记得我所有的偏好，出门时牵着我的手，夜里贴在我耳边叫我的名字：“——”那种被需要的感觉让我彻底沉溺。
+    text: `我一直以为自己遇到了完美的伴侣。伴侣总是记得我所有的偏好，出门时牵着我的手，夜里贴在我耳边叫我的名字：“[Aname]”那种被需要的感觉让我彻底沉溺。
 可最近我常常感觉有些不对劲。[B1a特征]
 有几个晚上，我听到身边传来细微的响动，回头看见[B1b特征]
 昨晚我半夜惊醒，屋子静得像空的，我的身边空无一人，[B1c特征]。我慢慢走到客厅，感觉地上好像有什么东西在爬。紧接着，我看见一个人影把身体一点点折叠，四肢像被生硬地拧断又拼接，背脊高高拱起，手脚并用地沿着墙面缓慢爬行。骨头在皮下顶出不正常的角度，关节“咔”的一声错开又对上，渗出的血在地板上拉出一条发黑的线。
-那个人影一点点朝我爬过来，我仿佛被钉在了地上，想跑但一丝一毫都动不了。那个人抬起头时，是我无比熟悉的那张脸！可那张脸的下颌被拉得很长，嘴角裂开，血顺着牙缝滴落，仍旧在低声叫我：“——”`
+那个人影一点点朝我爬过来，我仿佛被钉在了地上，想跑但一丝一毫都动不了。那个人抬起头时，是我无比熟悉的那张脸！可那张脸的下颌被拉得很长，嘴角裂开，血顺着牙缝滴落，仍旧在低声叫我：“[Aname]——”`
   },
 
   /* === B2：侵阈焦虑 === */
@@ -134,15 +131,9 @@ function buildStoryParagraphs(){
   let story = STORIES[storyKey];
   const userName = payload.name || '她';
   if(!story){
-    return {
-      title: '没有故事',
-      paragraphs: ['还没有有效的答题数据哦。请先回到答题页生成结果。'],
-    };
+    return { title: '没有故事', paragraphs: ['还没有有效的答题数据哦。请先回到答题页生成结果。'] };
   }
-  // 基文
   let txt = story.text.replaceAll('[Aname]', userName);
-
-  // 按命中故事替换相应特征
   const R = (k, v) => (txt = txt.replaceAll(k, v || ''));
   switch(storyKey){
     case 'A1': R('[A1a特征]', ans['A1a']); R('[A1b特征]', ans['A1b']); R('[A1c特征]', ans['A1c']); break;
@@ -154,16 +145,13 @@ function buildStoryParagraphs(){
     case 'B1': R('[B1a特征]', ans['B1a']); R('[B1b特征]', ans['B1b']); R('[B1c特征]', ans['B1c']); break;
     case 'B2': R('[B2a特征]', ans['B2a']); R('[B2b特征]', ans['B2b']); R('[B2c特征]', ans['B2c']); R('[B1c特征]', ans['B1c']); break;
   }
-  return {
-    title: story.title,
-    paragraphs: txt.split('\n').map(s=>s.trim()).filter(Boolean),
-  };
+  return { title: story.title, paragraphs: txt.split('\n').map(s=>s.trim()).filter(Boolean) };
 }
 const built = buildStoryParagraphs();
 let WOMAN_TEXT = built.title;
 let paragraphs = built.paragraphs;
 
-/*==================== 视觉资源（可按需替换路径） ====================*/
+/*==================== 视觉资源（路径可自改） ====================*/
 const GLITCH_MAP={
   A1:'assets/glitch_A1.gif',A2:'assets/glitch_A2.gif',A3:'assets/glitch_A3.gif',A4:'assets/glitch_A4.gif',A5:'assets/glitch_A5.gif',A6:'assets/glitch_A6.gif',
   B1:'assets/glitch_B1.gif',B2:'assets/glitch_B2.gif',B3:'assets/glitch_B3.gif',B4:'assets/glitch_B4.gif',B5:'assets/glitch_B5.gif',B6:'assets/glitch_B6.gif',
@@ -172,7 +160,7 @@ const GLITCH_MAP={
 const EYE_IMAGE_PATH='assets/eyes.png';
 const GLITCH_IMAGE_PATH = GLITCH_MAP[storyKey] || null;
 
-/*==================== 布局常量（确保只声明一次） ====================*/
+/*==================== 布局常量 ====================*/
 const RIGHT_RATIO=0.56, SAFE_TOP=20, SAFE_RIGHT=30, SAFE_BOTTOM=24, GUTTER=24;
 const WRAP_WIDTH_RATIO=0.92;
 const BASE={title:96, para:18, padX:10, padY:4, gap:12};
@@ -188,7 +176,8 @@ let rightRect={x:0,y:0,w:0,h:0};
 let video,mosaicBuffer,mosaicTick=0;
 let eyesImg=null, eyes=[]; const EYE_COUNT=7;
 let glitchStill=null,glitchKeyed=null,glitchOn=false,glitchFrames=0;
-const GLITCH={ALPHA:245, PROB:0.015, MIN:12, MAX:24, KEY:true, TH:28, SOFT:24};
+// 关闭闪屏：PROB 设为 0
+const GLITCH={ALPHA:210, PROB:0, MIN:6, MAX:12, KEY:true, TH:28, SOFT:24};
 
 function preload(){
   if(GLITCH_IMAGE_PATH){ glitchStill=loadImage(GLITCH_IMAGE_PATH,()=>{},()=>glitchStill=null); }
@@ -196,9 +185,7 @@ function preload(){
 }
 function setup(){
   createCanvas(windowWidth, windowHeight); textAlign(LEFT,TOP);
-  try{
-    video=createCapture(VIDEO); video.size(Math.floor(width/10), Math.floor(height/10)); video.hide();
-  }catch(e){ video=null; }
+  try{ video=createCapture(VIDEO); video.size(Math.floor(width/10), Math.floor(height/10)); video.hide(); }catch(e){ video=null; }
   mosaicBuffer=createGraphics(width,height); mosaicBuffer.noStroke();
   updateLayout(); autosizeToFit(); initEyes();
 }
@@ -228,12 +215,11 @@ function drawMosaicBackground(){
       }
     }
   }else{
-    // 没摄像头/被拒绝时的后备纹理
     const step=18;
     for(let y=0;y<height;y+=step){
       for(let x=0;x<width;x+=step){
-        const g=80+Math.sin((x+y+frameCount*2)*0.02)*60;
-        mosaicBuffer.fill(g,40); mosaicBuffer.rect(x,y,step,step);
+        const g=80+Math.sin((x+y+frameCount*0.5)*0.015)*30;
+        mosaicBuffer.fill(g,36); mosaicBuffer.rect(x,y,step,step);
       }
     }
   }
@@ -243,12 +229,18 @@ function darkenBG(a){ noStroke(); fill(0,a); rect(0,0,width,height); }
 
 function maybeFlashGlitch(){
   if(!glitchStill) return;
-  if(!glitchOn && random()<GLITCH.PROB){ glitchOn=true; glitchFrames=int(random(GLITCH.MIN,GLITCH.MAX+1)); initEyes(); }
+  // PROB 为 0 时不会进入此分支，保留逻辑仅作占位
+  if(!glitchOn && random()<GLITCH.PROB){
+    glitchOn = true;
+    glitchFrames = int(random(GLITCH.MIN, GLITCH.MAX+1));
+  }
   if(glitchOn){
     push(); tint(255,GLITCH.ALPHA);
-    const img=(GLITCH.KEY? (glitchKeyed||(glitchKeyed=keyOutBlack(glitchStill,GLITCH.TH,GLITCH.SOFT))) : glitchStill);
-    const cs=Math.min(width,height), sc=cs/Math.min(img.width,img.height), dw=img.width*sc, dh=img.height*sc;
-    image(img,(width-dw)/2,(height-dh)/2,dw,dh); pop();
+    const img = (GLITCH.KEY ? (glitchKeyed||(glitchKeyed=keyOutBlack(glitchStill,GLITCH.TH,GLITCH.SOFT))) : glitchStill);
+    const cs = Math.min(width,height), sc = cs/Math.min(img.width,img.height);
+    const dw = img.width*sc, dh = img.height*sc;
+    image(img,(width-dw)/2,(height-dh)/2,dw,dh);
+    pop();
     if(--glitchFrames<=0) glitchOn=false;
   }
 }
