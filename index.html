@@ -39,10 +39,12 @@
       color:#ffd6d6;padding:6px 2px;text-align:left;cursor:pointer;
       font:inherit;font-size:clamp(18px,2.2vw,24px);line-height:1.5;
       outline:none;transition:opacity .15s ease, transform .06s ease;
-      opacity:.9
+      opacity:.9; display:block;             /* 防止被挤瘪 */
+      text-shadow:0 0 10px rgba(0,0,0,.35);  /* 叠在摄像头上更清晰 */
     }
     .btn:hover{opacity:1;transform:translateY(-1px)}
     .btn:focus-visible{text-decoration:underline;text-underline-offset:3px}
+
     .input{
       width:100%;background:transparent;color:#fff;
       border:none;border-bottom:1px dashed rgba(255,80,80,.45);
@@ -321,16 +323,21 @@ function stripLeadingId(s){
   return String(s).replace(/^[A-Z]{1,2}\d+[a-z]?\.?\s*/,'');
 }
 
-function clearUI(){ activeButtons.forEach(b=>b.remove()); activeButtons=[]; if(inputEl){inputEl.remove();inputEl=null;} if(startBtn){startBtn.remove();startBtn=null;} }
+function clearUI(){
+  activeButtons.forEach(b=>b.remove());
+  activeButtons=[]; if(inputEl){inputEl.remove();inputEl=null;}
+  if(startBtn){startBtn.remove();startBtn=null;}
+}
 function setBar(){ const pct=Math.min(100, Math.round((totalAsked/13)*100)); barDiv.elt.style.width=pct+'%'; }
 function recordAnswer(qid,val){ answers[qid]=val; totalAsked++; setBar(); }
 
 // Intro
 function renderIntro(){
-  stage='intro'; titleDiv.html('请在下方输入你的名字：'); clearUI(); contentDiv.elt.classList.add('row','cols-2');
+  stage='intro'; titleDiv.html('请在下方输入你的名字：'); clearUI(); 
+  contentDiv.elt.className = 'row cols-2';
   inputEl=createInput(''); inputEl.addClass('input'); inputEl.parent(contentDiv);
   startBtn=createButton('开始答题'); startBtn.addClass('btn'); startBtn.parent(contentDiv); activeButtons.push(startBtn);
-  startBtn.mousePressed(()=>{ const v=inputEl.value().trim(); if(!v) return; nameValue=v; contentDiv.elt.classList.remove('cols-2'); goA(); });
+  startBtn.mousePressed(()=>{ const v=inputEl.value().trim(); if(!v) return; nameValue=v; contentDiv.elt.className='row'; goA(); });
   setBar();
 }
 
@@ -338,7 +345,7 @@ function renderIntro(){
 function goA(){ stage='A'; clearUI(); pendingAAnchor=false; pendingASuppIndex=-1; renderA(); }
 function renderA(){
   const q=A_QUESTIONS[aIndex];
-  if(!q){ return goC1(); } // A 主问题全部否 → 走 C1 → B
+  if(!q){ return goC1(); }
   if(!pendingAAnchor && pendingASuppIndex===-1){
     titleDiv.html(stripLeadingId(q.main));
     renderOptions([{label:YES,on:()=>onAMain(q,YES)},{label:NO,on:()=>onAMain(q,NO)}],2);
@@ -436,15 +443,21 @@ function goDone(){
   setBar();
 }
 
-// 通用渲染（纯文字按钮）
+/* —— 纯文字选项渲染：彻底清空并重置类名，避免选项消失 —— */
 function renderOptions(list, cols){
-  contentDiv.elt.classList.remove('cols-2');
-  contentDiv.elt.classList.add('row');
-  if(cols===2) contentDiv.elt.classList.add('cols-2'); else contentDiv.elt.classList.remove('cols-2');
+  // 彻底清理旧节点（避免残留）
+  activeButtons.forEach(b=>b.remove());
+  activeButtons=[];
+  contentDiv.html('');
+  contentDiv.elt.className = 'row' + (cols===2 ? ' cols-2' : '');
+
   list.forEach(item=>{
     const label = (typeof item==='object' && 'label' in item) ? item.label : String(item);
     const on = (typeof item==='object' && 'on' in item) ? item.on : null;
-    const b=createButton(label); b.addClass('btn'); b.parent(contentDiv); b.mousePressed(()=>{on&&on();}); activeButtons.push(b);
+    const b=createButton(label);
+    b.addClass('btn'); b.parent(contentDiv);
+    b.mousePressed(()=>{ on && on(); });
+    activeButtons.push(b);
   });
   setBar();
 }
