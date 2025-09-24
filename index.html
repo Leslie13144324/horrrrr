@@ -534,7 +534,7 @@ function goD(){
 /* 完成跳转 */
 function goDone(){
   stage='done'; clearUI();
-  titleDiv.html((nameValue||'参与者')+'，谢谢你的回答。');
+  titleDiv.html((nameValue||'参与者')+'，请稍等。');
   const btn=createButton('生成故事'); btn.addClass('btn'); btn.parent(contentDiv); activeButtons.push(btn);
   btn.mousePressed(()=>{
     const payload={ name:nameValue, answers, identityCount, anxietyCount, totalAsked };
@@ -574,7 +574,7 @@ const D_QUESTIONS = [
   { id:'D5', text:'D5. 哪个时间点最不对劲？', options:['03:17','04:44','05:01']},
   { id:'D6', text:'D6. 你最怕哪种脚步？', options:['跟在后面','从门外经过','从楼上停住']},
   { id:'D7', text:'D7. 你会把镜子放在哪里？', options:['窗边','柜门内侧','床对面']},
-  { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名','电流嗡嗡']},
+  { id:'D8', text:'D8. 哪种声音像是专为你而来？', options:['轻轻敲窗','呼喊你的名字','电流嗡嗡']},
 ];
 </script>
 </body>
