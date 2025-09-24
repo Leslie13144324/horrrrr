@@ -504,7 +504,14 @@ function onBMain(q,ans){
   clearUI(); renderB();
 }
 function onBSupp(q,s,choice){
-  const value = (typeof choice==='object' && 'fill' in choice) ? choice.fill : choice;
+  let value = (typeof choice==='object' && 'fill' in choice) ? choice.fill : choice;
+
+  // —— 个性化：仅对 B6 的补充问，把“她”换成参与者名字
+  if (q && q.id === 'B6' && typeof value === 'string') {
+    const who = nameValue && nameValue.trim() ? nameValue.trim() : '参与者';
+    value = value.replace(/她/g, who);
+  }
+
   recordAnswer(s.id, value);
   pendingBSuppIndex++;
   if(pendingBSuppIndex>=q.supplements.length){
@@ -512,6 +519,7 @@ function onBSupp(q,s,choice){
   }
   clearUI(); renderB();
 }
+
 
 /* D：用于补足到 13 题（新增“兜底问题：你最害怕？”） */
 let dIndex=0;
