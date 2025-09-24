@@ -247,8 +247,12 @@ function windowResized(){
 function draw(){
   background(0); drawMosaicBackground(); darkenBG(45);
   maybeFlashGlitch(); if(!glitchOn) drawEyes();
-  ribbonEdges.length=0; drawRightColumn(true); bleedRibbons(); drawRightColumn(false);
+  ribbonEdges.length=0;
+  drawRightColumn(true);     // 第一次：收集红框底边
+  drawRightColumn(false);    // 第二次：真的把红框画出来
+  bleedRibbons();            // 现在血滴在最上层，不会被覆盖
 }
+
 function drawMosaicBackground(){
   if(mosaicTick%3===0){
     mosaicBuffer.clear(); video.loadPixels();
@@ -406,10 +410,11 @@ function collectRibbonBottomEdges(x,y,boxWs,boxH){
 
 /*==================== 出血（更稀更慢） ====================*/
 const R={
-  ENABLED:true,DELAY:160,
-  DENSITY:0.00006,   // 更稀
-  MAX:220,           // 上限更低
-  VMIN:0.03, VMAX:0.09, // 更慢
+  ENABLED:true,
+  DELAY:90,            // 更早开始
+  DENSITY:0.00012,     // 稍微更明显
+  MAX:240,
+  VMIN:0.035, VMAX:0.08,
   LEN_MIN:80, LEN_MAX:360,
   THICK_MIN:6, THICK_MAX:8,
   WOBBLE:0.85, ALPHA:230
