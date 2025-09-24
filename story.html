@@ -175,7 +175,7 @@ let WOMAN_TEXT = (STORIES[storyKey]?.title) || '未命名故事';
 function pickGlitchPath(key){
   if(!key) return null;
   if(/^A/.test(key)) return 'assets/glitch_A1.gif';
-  if(/^B/.test(key)) return 'assets/glitch_B1.gif';
+  if(/^B/.test(key)) return 'assets/glitch_A1.gif';
   return 'assets/glitch_B1.gif';
 }
 const EYE_IMAGE_PATH='assets/eyes.png';
