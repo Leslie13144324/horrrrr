@@ -19,18 +19,13 @@ let aHit=null; for(let i=1;i<=6;i++){ if(ans['AA'+i]==='是'){ aHit='A'+i; break
 let bHit=null; for(let i=1;i<=6;i++){ if(ans['B'+i]==='是'){ bHit='B'+i; break; } }
 const cHit = ans['C1'] ? 'C1' : null;
 
-// 选择故事优先级：先 B（若有 C1 也选 B），再 A，再 C1
+// 选择故事优先级：先 B，再 A，再 C1
 let storyKey=null;
 if(bHit){ storyKey=bHit; }
 else if(aHit){ storyKey=aHit; }
 else if(cHit){ storyKey=cHit; }
 
 /*==================== 故事模板 ====================*/
-/* 说明：
-   - 模板里使用 [Aname] 作为显式名字占位符；
-   - 运行时会把 [Aname] 换为参与者名字；
-   - 另外：除 A1 外，会把正文出现的单字“她”统一替换为参与者名字（避免人称错位）。
-*/
 const STORIES = {
   A1: {
     title: "那个女人",
@@ -42,7 +37,6 @@ const STORIES = {
 她回头的时候，那张脸正挂在手里，可她还在笑。和照片里一模一样的笑。`
   },
 
-  /* === A2：性少数 === */
   A2: {
     title: "影子靠得太近",
     text: `刚认识[Aname]的时候，我只觉得[Aname]人很好。[Aname]总是替我占座，记得我爱吃什么，把细枝末节都放在心上。我和[Aname]是同一个性别，所以我以为，这只是普通朋友的关心。可渐渐地，我发现哪里不对。[Aname]看我的时间太久了，[A2a特征]
@@ -56,7 +50,6 @@ const STORIES = {
 我开始睡不安稳。半夜醒来，总觉得[Aname]的呼吸在枕边。有一次，我清楚地感觉到，有手从被子底下伸进来，冰冷而湿，一点点往我身上爬。我一抬头，[Aname]正趴在床沿，脸离我只有一寸远。`
   },
 
-  /* === A3：患病者 === */
   A3: {
     title: "楼道里的数数声",
     text: `孩子们在楼下跳皮筋时，会唱一首歌：
@@ -78,7 +71,6 @@ const STORIES = {
 “是不是你？”`
   },
 
-  /* === A4：外地人 === */
   A4: {
     title: "缝一张“本地脸”",
     text: `他们说城里最近出现了一个人，没有人知道那人的确切名字，那人自言自语时总会反复低声念一个像“[Aname]”的音节，于是人们就用她称呼那人。没人知道[Aname]是从哪儿来的，只知道[Aname]在这座城市没有任何亲人，也没有留下任何地址。
@@ -87,7 +79,6 @@ const STORIES = {
 后来，城里孩子常常莫名失踪。有人怀疑，是跟[Aname]走了。有人说，[Aname]只是想缝出一张真正“属于这里”的脸。`
   },
 
-  /* === A5：东亚家庭被压抑的孩子 === */
   A5: {
     title: "那张永远在写字的桌子",
     text: `家里其实一直有四个人。只是父母后来再也不提起那一个。
@@ -101,7 +92,6 @@ const STORIES = {
 这所房子，本来就埋着两个孩子。`
   },
 
-  /* === A6：社交边缘人 === */
   A6: {
     title: "练习册上的名字",
     text: `班上有个同学叫[Aname]，总是一个人。
@@ -111,7 +101,6 @@ const STORIES = {
 后来，有人翻过[Aname]的练习册。上面密密麻麻写的，都是班里同学的名字。`
   },
 
-  /* === B1：亲密关系焦虑 === */
   B1: {
     title: "伴侣不在时的房间",
     text: `我一直以为自己遇到了完美的伴侣。我的伴侣总是记得我所有的偏好，出门时牵着我的手，夜里贴在我耳边叫我的名字：“[Aname]”那种被需要的感觉让我彻底沉溺。
@@ -121,7 +110,6 @@ const STORIES = {
 那个人影一点点朝我爬过来，我仿佛被钉在了地上，想跑但一丝一毫都动不了。那个人抬起头时，是我无比熟悉的那张脸！可那张脸的下颌被拉得很长，嘴角裂开，血顺着牙缝滴落，仍旧在低声叫我：“[Aname]——”`
   },
 
-  /* === B2：侵阈焦虑 === */
   B2: {
     title: "外乡人",
     text: `[Aname]一直过着安静的生活。可最近，城里传出了奇怪的议论。
@@ -131,7 +119,6 @@ const STORIES = {
 [Aname]的喉咙发紧，空气像灌满了铁锈的腥味。[Aname]想退开，却发现背后已经贴在冰冷的墙上。那双眼睛没有移开，只在他脸上缓慢停留——安静得像在挑选下一张要取下的皮。`
   },
 
-  /* === C1：兜底“你最害怕的是？”（按答案三选一） === */
   C1: {
     title: "夜",
     text: (()=> {
@@ -143,311 +130,4 @@ const STORIES = {
 忽然，女子抬起头，唇齿间缓慢吐出[Aname]的名字，一字一顿，像是在招魂。冷风猛地灌入巷子，火柴熄灭，四周陷入死寂。白影定在面前一寸，红唇大张，没有牙齿，只有漆黑的洞。`;
       } else if (v.includes('吸血鬼')) {
         return `月光透过窗棂洒在[Aname]的房间里，冷白得像一层薄纱。手机黑屏中，忽然浮现出一张陌生的面孔——眼睛泛着血色光芒，嘴角露出锋利的獠牙。
-[Aname]愣在原地，心跳声被放大到整个房间都能听见。窗没有开，门没有响，可床边已经多出一个高大的身影。冰凉的手指在颈侧滑过，像在寻找血管的位置。
-灯光骤然熄灭，黑暗里传来低语：“别害怕，很快你就不需要心跳了。”下一秒，獠牙划破空气，血液像被提前召唤，从[Aname]的脖颈奔涌而出，注向那张渴求的嘴。`;
-      } else { // 恶灵
-        return `半夜醒来，[Aname]觉得房间安静得过分。手机屏幕黑着，却映出床边一个模糊的轮廓。盯久了，那影子缓缓蠕动，像是正慢慢靠近。
-呼吸里混入另一种节奏，比[Aname]的更沉重、更冰冷。木板咯吱作响，每一步都踩在胸口。肩膀逐渐下沉，像被无形的重量压住。想要翻身，身体却僵硬得像被钉死在床上。
-灯光闪烁的一瞬间，墙壁上浮现出一团黑雾般的面孔，没有眼睛，没有嘴巴，却紧贴在耳边。随即，冰凉的气息顺着耳道钻入大脑，模糊的低语在脑海里反复回荡——不属于[Aname]，却越来越像是[Aname]的声音。`;
-      }
-    })()
-  }
-};
-
-/*==================== 构建故事并做占位符替换 ====================*/
-function buildStoryParagraphs(){
-  const story = STORIES[storyKey];
-  if(!story) return ['（没有找到对应故事模板）'];
-  let txt = story.text;
-
-  // 名字兜底
-  const userName = (payload.name && String(payload.name).trim()) || '参与者';
-
-  // 先替换显式名字占位符
-  txt = txt.replaceAll('[Aname]', userName);
-
-  // A1 特征占位符
-  if(storyKey === 'A1'){
-    txt = txt.replaceAll('[A1a特征]', ans['A1a']||'')
-             .replaceAll('[A1b特征]', ans['A1b']||'')
-             .replaceAll('[A1c特征]', ans['A1c']||'');
-  }
-
-  // 其余故事通用特征替换
-  const rep = (k)=>{ if(ans[k]) txt = txt.replaceAll(`[${k}特征]`, ans[k]); };
-  switch(storyKey){
-    case 'A2': ['A2a','A2b','A2c'].forEach(rep); break;
-    case 'A3': ['A3a','A3b','A3c'].forEach(rep); break;
-    case 'A4': ['A4a','A4b','A4c'].forEach(rep); break;
-    case 'A5': ['A5a','A5b','A5c'].forEach(rep); break;
-    case 'A6': ['A6a','A6b','A6c'].forEach(rep); break;
-    case 'B1': ['B1a','B1b','B1c'].forEach(rep); break;
-    case 'B2': ['B2a','B2b','B2c'].forEach(rep); break;
-    case 'C1': /* C1 无额外特征 */ break;
-  }
-
-  // 【关键】除 A1 外，把正文中单字“她”替换为参与者名字（避免人称错位）
-  if(storyKey !== 'A1'){
-    txt = txt.replace(/她/g, userName);
-  }
-
-  return txt.split('\n').map(s=>s.trim()).filter(Boolean);
-}
-let paragraphs = buildStoryParagraphs();
-
-/*==================== 标题 ====================*/
-let WOMAN_TEXT = (STORIES[storyKey]?.title) || '未命名故事';
-
-/*==================== 视觉资源 ====================*/
-/* 图片策略：A 类一律用 A1 图；B 类一律用 B1 图；其他（如 C1）默认用 B1 图 */
-function pickGlitchPath(key){
-  if(!key) return null;
-  if(/^A/.test(key)) return 'assets/glitch_A1.gif';
-  if(/^B/.test(key)) return 'assets/glitch_B1.gif';
-  return 'assets/glitch_B1.gif';
-}
-const EYE_IMAGE_PATH='assets/eyes.png';
-const GLITCH_IMAGE_PATH = pickGlitchPath(storyKey);
-
-/*==================== 布局与绘制 ====================*/
-const RIGHT_RATIO=0.56, SAFE_TOP=20, SAFE_RIGHT=30, SAFE_BOTTOM=24, GUTTER=24;
-const WRAP_WIDTH_RATIO=0.92;
-const BASE={title:96, para:18, padX:10, padY:4, gap:12};
-const MIN ={title:24, para:12, padX:6, padY:2, gap:8 };
-const LEAD={title:1.05, para:0.98};
-let S={...BASE};
-const BOX_FILL=[210,20,20], BOX_ALPHA=220, TEXT_RGB=[255,255,255];
-const SHADOW_ALPHA=40, SHADOW_OFFSET=2;
-const TEAR_INTENSITY=2.0, TEAR_SCALE=0.03, TEAR_ALPHA=35;
-let rightRect={x:0,y:0,w:0,h:0};
-
-let video,mosaicBuffer,mosaicTick=0;
-let eyesImg=null, eyes=[]; const EYE_COUNT=7;
-
-/* —— 图片出现频率更低、持续更久 —— */
-let glitchStill=null,glitchKeyed=null,glitchOn=false,glitchFrames=0;
-const GLITCH={ALPHA:245, PROB:0.006, MIN:28, MAX:46, KEY:true, TH:28, SOFT:24};
-
-function preload(){
-  if(GLITCH_IMAGE_PATH){ glitchStill=loadImage(GLITCH_IMAGE_PATH,()=>{},()=>glitchStill=null); }
-  eyesImg = loadImage(EYE_IMAGE_PATH,()=>{},()=>{ eyesImg=null; });
-}
-function setup(){
-  createCanvas(windowWidth, windowHeight); textAlign(LEFT,TOP);
-  video=createCapture(VIDEO); video.size(floor(width/10), floor(height/10)); video.hide();
-  mosaicBuffer=createGraphics(width,height); mosaicBuffer.noStroke();
-  updateLayout(); autosizeToFit(); initEyes();
-}
-function windowResized(){
-  resizeCanvas(windowWidth, windowHeight);
-  mosaicBuffer=createGraphics(width,height); mosaicBuffer.noStroke();
-  if(video) video.size(floor(width/10),floor(height/10));
-  updateLayout(); autosizeToFit(); initEyes();
-}
-function draw(){
-  background(0); drawMosaicBackground(); darkenBG(45);
-  maybeFlashGlitch(); if(!glitchOn) drawEyes();
-  ribbonEdges.length=0;
-  drawRightColumn(true);     // 第一次：收集红框底边
-  drawRightColumn(false);    // 第二次：真的把红框画出来
-  bleedRibbons();            // 现在血滴在最上层，不会被覆盖
-}
-
-function drawMosaicBackground(){
-  if(mosaicTick%3===0){
-    mosaicBuffer.clear(); video.loadPixels();
-    const step=10, levels=6, a=255, minG=20, maxG=170;
-    for(let y=0;y<video.height;y++){
-      for(let x=0;x<video.width;x++){
-        const idx=(x+y*video.width)*4;
-        const q=map(floor(map((video.pixels[idx]+video.pixels[idx+1]+video.pixels[idx+2])/3,0,255,0,levels)),0,levels-1,minG,maxG);
-        mosaicBuffer.fill(q,a); mosaicBuffer.rect(x*step,y*step,step,step);
-      }
-    }
-  }
-  mosaicTick++; image(mosaicBuffer,0,0,width,height);
-}
-function darkenBG(a){ noStroke(); fill(0,a); rect(0,0,width,height); }
-
-function maybeFlashGlitch(){
-  if(!glitchStill) return;
-  if(!glitchOn && random()<GLITCH.PROB){ glitchOn=true; glitchFrames=int(random(GLITCH.MIN,GLITCH.MAX+1)); initEyes(); }
-  if(glitchOn){
-    push(); tint(255,GLITCH.ALPHA);
-    const img=(GLITCH.KEY? (glitchKeyed||(glitchKeyed=keyOutBlack(glitchStill,GLITCH.TH,GLITCH.SOFT))) : glitchStill);
-    const cs=min(width,height), sc=cs/min(img.width,img.height), dw=img.width*sc, dh=img.height*sc;
-    image(img,(width-dw)/2,(height-dh)/2,dw,dh); pop();
-    if(--glitchFrames<=0) glitchOn=false;
-  }
-}
-function keyOutBlack(src,thr=28,soft=24){
-  const out=createImage(src.width,src.height); out.copy(src,0,0,src.width,src.height,0,0,src.width,src.height);
-  out.loadPixels(); const n=out.width*out.height;
-  for(let i=0;i<n;i++){ const idx=i*4, r=out.pixels[idx],g=out.pixels[idx+1],b=out.pixels[idx+2],a0=out.pixels[idx+3], br=(r+g+b)/3;
-    out.pixels[idx+3]=(br<=thr)?0:(br<thr+soft? a0*((br-thr)/soft) : a0);
-  } out.updatePixels(); return out;
-}
-function initEyes(){
-  eyes=[]; if(!eyesImg) return;
-  for(let i=0;i<EYE_COUNT;i++){
-    const m=40, x=random(m,width-m), y=random(m,height-m), w=random(90,140)*(width/1280*0.9+0.55), h=w*(eyesImg.height/eyesImg.width);
-    eyes.push({x,y,w,h, amp:random(4,10), spd:random(0.015,0.035), ph:random(TWO_PI), rotAmp:random(-0.06,0.06)});
-  }
-}
-function drawEyes(){
-  if(!eyesImg || !eyes.length) return;
-  imageMode(CENTER);
-  for(const e of eyes){
-    const dy=sin(frameCount*e.spd+e.ph)*e.amp, dx=cos(frameCount*e.spd*0.8+e.ph)*e.amp*0.35;
-    push(); translate(e.x+dx,e.y+dy); rotate(sin(frameCount*e.spd*0.6+e.ph)*e.rotAmp); image(eyesImg,0,0,e.w,e.h); pop();
-  }
-  imageMode(CORNER);
-}
-
-/*==================== 文本布局（右栏） ====================*/
-const RIGHT_W = ()=> rightRect.w*WRAP_WIDTH_RATIO;
-function updateLayout(){
-  const rx=floor(width*RIGHT_RATIO)+GUTTER, rw=Math.max(220,width-rx-SAFE_RIGHT);
-  rightRect={x:rx,y:SAFE_TOP,w:rw,h:height-SAFE_TOP-SAFE_BOTTOM};
-}
-function wrapLines(s,maxW,fontSize){
-  textSize(fontSize);
-  const hasSpace=/\s/.test(s);
-  const hasCJK=/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/.test(s);
-  let lines=[''];
-  if(hasCJK || !hasSpace){
-    for(const ch of Array.from(s)){
-      const cur=lines[lines.length-1];
-      const candidate=cur+ch;
-      if(textWidth(candidate)<=maxW || cur==='') lines[lines.length-1]=candidate;
-      else lines.push(ch);
-    }
-  }else{
-    for(const tk of s.split(/(\s+)/)){
-      const cur=lines[lines.length-1];
-      const candidate=cur+tk;
-      if(textWidth(candidate)<=maxW || cur==='') lines[lines.length-1]=candidate;
-      else lines.push(tk.trimStart());
-    }
-  }
-  return lines.map(v=>v.replace(/\s+$/,''));
-}
-function autosizeToFit(){
-  S={...BASE};
-  for(let it=0; it<40; it++){
-    const need=estimateHeight(S);
-    if(need<=rightRect.h) break;
-    const ratio=Math.max(0.5, rightRect.h/need*0.97);
-    S.title=Math.max(MIN.title, Math.floor(S.title*ratio));
-    S.para =Math.max(MIN.para , Math.floor(S.para *ratio));
-    S.padX=Math.max(MIN.padX , Math.floor(S.padX*ratio));
-    S.padY=Math.max(MIN.padY , Math.floor(S.padY*ratio));
-    S.gap =Math.max(MIN.gap , Math.floor(S.gap*ratio));
-  }
-}
-function estimateHeight(sz){
-  const w=RIGHT_W();
-  const tLines=wrapLines(WOMAN_TEXT,w,sz.title);
-  const tBoxH=(sz.title*LEAD.title+2*sz.padY)*tLines.length;
-  let h=tBoxH+sz.gap*1.2;
-  for(const p of paragraphs){
-    const lines=wrapLines(p,w,sz.para);
-    const boxH=(sz.para*LEAD.para+2*sz.padY)*lines.length;
-    h+=boxH+sz.gap;
-  }
-  return h;
-}
-let ribbonEdges=[];
-function drawRightColumn(collect=true){
-  const w=RIGHT_W(); let y=rightRect.y;
-  textFont('monospace'); textSize(S.title); textLeading(S.title*LEAD.title);
-  const tLines=wrapLines(WOMAN_TEXT,w,S.title);
-  y=drawRibbonBlock(tLines,rightRect.x,y,S.title*LEAD.title,S.padX,S.padY,BOX_FILL,BOX_ALPHA,[255,255,255],collect);
-  y+=S.gap*1.2;
-  textFont('monospace'); textSize(S.para); textLeading(S.para*LEAD.para);
-  for(const p of paragraphs){
-    const lines=wrapLines(p,w,S.para);
-    y=drawRibbonBlock(lines,rightRect.x,y,S.para*LEAD.para,S.padX,S.padY,BOX_FILL,BOX_ALPHA,TEXT_RGB,collect);
-    y+=S.gap;
-  }
-}
-function drawRibbonBlock(lines,x,y,leading,padX,padY,fillRGB,fillAlpha,textRGB,collectEdges){
-  const boxH=leading+padY*2;
-  const widths=lines.map(s=>Math.max(1,textWidth(s)));
-  const maxW=RIGHT_W();
-  const boxWs=widths.map(w=>Math.min(w+padX*2, maxW));
-  drawRibbonShape(x+SHADOW_OFFSET,y+SHADOW_OFFSET,boxWs,boxH,color(0,SHADOW_ALPHA),null);
-  drawRibbonShape(x,y,boxWs,boxH,color(fillRGB[0],fillRGB[1],fillRGB[2],fillAlpha),{tear:true});
-  fill(textRGB[0],textRGB[1],textRGB[2]); noStroke();
-  for(let i=0;i<lines.length;i++){ const ty=y+i*boxH+padY; text(lines[i], x+padX, ty); }
-  if(collectEdges) collectRibbonBottomEdges(x,y,boxWs,boxH);
-  return y+lines.length*boxH;
-}
-function drawRibbonShape(x,y,boxWs,boxH,fillCol,opt={tear:false}){
-  const pts=buildRibbonOutline(x,y,boxWs,boxH);
-  noStroke(); fill(fillCol); beginShape(); for(const p of pts) vertex(p.x,p.y); endShape(CLOSE);
-  if(opt&&opt.tear){
-    noFill(); stroke(255,TEAR_ALPHA); strokeWeight(2);
-    beginShape();
-    for(const p of pts){
-      const jx=(noise(p.x*TEAR_SCALE,p.y*TEAR_SCALE)-.5)*2*TEAR_INTENSITY;
-      const jy=(noise(p.x*TEAR_SCALE+999,p.y*TEAR_SCALE+999)-.5)*2*TEAR_INTENSITY;
-      vertex(p.x+jx,p.y+jy);
-    }
-    endShape(CLOSE);
-  }
-}
-function buildRibbonOutline(x,y,boxWs,boxH){
-  const n=boxWs.length, pts=[]; pts.push({x:x,y:y}); pts.push({x:x+boxWs[0],y:y});
-  for(let i=0;i<n;i++){ pts.push({x:x+boxWs[i],y:y+(i+1)*boxH}); if(i<n-1) pts.push({x:x+boxWs[i+1],y:y+(i+1)*boxH}); }
-  pts.push({x:x,y:y+n*boxH}); pts.push({x:x,y:y}); return pts;
-}
-function collectRibbonBottomEdges(x,y,boxWs,boxH){
-  const n=boxWs.length;
-  for(let i=0;i<n-1;i++){ if(boxWs[i]>boxWs[i+1]) ribbonEdges.push({x1:x+boxWs[i+1],x2:x+boxWs[i],y:y+(i+1)*boxH}); }
-  ribbonEdges.push({x1:x,x2:x+boxWs[n-1],y:y+n*boxH});
-}
-
-/*==================== 出血（更稀更慢） ====================*/
-const R={
-  ENABLED:true,
-  DELAY:90,            // 更早开始
-  DENSITY:0.00012,     // 稍微更明显
-  MAX:240,
-  VMIN:0.035, VMAX:0.08,
-  LEN_MIN:80, LEN_MAX:360,
-  THICK_MIN:6, THICK_MAX:8,
-  WOBBLE:0.85, ALPHA:230
-};
-let ribbonDrips=[];
-function bleedRibbons(){
-  if(!R.ENABLED) return;
-  if(!this._started){ if(frameCount-R.DELAY>0){ this._started=true; } else return; }
-  for(const seg of ribbonEdges){
-    const L=Math.max(0,seg.x2-seg.x1); if(L<=0) continue;
-    const expected=L*R.DENSITY, n=Math.floor(expected), prob=expected-n;
-    let count=n+(Math.random()<prob?1:0); count=Math.min(count,Math.max(0),R.MAX-ribbonDrips.length);
-    for(let k=0;k<count;k++){
-      const x=random(seg.x1+.5, seg.x2-.5), y0=seg.y+1, maxLen=Math.max(0,height-y0-6);
-      ribbonDrips.push({x,y0,head:0,len:constrain(random(R.LEN_MIN,R.LEN_MAX),12,maxLen),
-        speed:random(R.VMIN,R.VMAX),thick:random(R.THICK_MIN,R.THICK_MAX),seed:random(1000)});
-      if(ribbonDrips.length>=R.MAX) break;
-    }
-    if(ribbonDrips.length>=R.MAX) break;
-  }
-  noStroke();
-  for(let i=ribbonDrips.length-1;i>=0;i--){
-    const d=ribbonDrips[i]; d.speed*=1.01; d.head+=d.speed;
-    const segH=3;
-    for(let yy=0; yy<d.head && yy<d.len; yy+=segH){
-      const t=yy/d.len, w=lerp(d.thick,d.thick*0.65,t), wob=(noise(d.seed+yy*0.05+frameCount*0.02)-.5)*2*R.WOBBLE;
-      fill(BOX_FILL[0],BOX_FILL[1],BOX_FILL[2],R.ALPHA); rect(d.x+wob-w/2, d.y0+yy, w, segH);
-    }
-    const wobHead=(noise(d.seed+d.head*0.05+frameCount*0.02)-.5)*2*R.WOBBLE;
-    fill(BOX_FILL[0],BOX_FILL[1],BOX_FILL[2],Math.min(255,R.ALPHA+10)); ellipse(d.x+wobHead, d.y0+d.head, d.thick*1.2, d.thick*1.2);
-    if(d.head>d.len) ribbonDrips.splice(i,1);
-  }
-}
-</script>
-</body>
-</html>
+[Aname]愣在原地，心跳声被放大到整个房间都能听见。窗没有开，
