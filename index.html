@@ -4,12 +4,31 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>如何被写进恐怖故事里 · 答题页</title>
+
+  <!-- p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.dom.min.js"></script>
+
   <style>
+    /* === 自定义字体（确保 /assets/fonts/RubikGlitch-Regular.ttf 存在） === */
+    @font-face{
+      font-family:"Rubik Glitch";
+      src:url("./assets/fonts/RubikGlitch-Regular.ttf") format("truetype");
+      font-weight:400;
+      font-style:normal;
+      font-display:swap;
+    }
+
     :root { --red:#ff3b3b; }
-    html,body{margin:0;padding:0;height:100%;background:#000;color:#ffecec;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+    html,body{
+      margin:0; padding:0; height:100%;
+      background:#000; color:#ffecec;
+      /* 全站字体使用 Rubik Glitch，带常见中文/系统回退 */
+      font-family:"Rubik Glitch","JetBrains Mono","Noto Sans SC","PingFang SC",
+                  "Microsoft YaHei",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace,system-ui,sans-serif;
+    }
+
     #sketch-holder{position:fixed;inset:0;z-index:0}
     .vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
       background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(0,0,0,.55) 100%)}
@@ -21,28 +40,31 @@
     }
 
     .title{
-  font-size:clamp(22px,3.2vw,34px);
-  line-height:1.6;
-  color:var(--red);              /* 改为红色 */
-  margin-bottom:16px;
-  text-shadow:0 0 18px rgba(255,59,59,.25); /* 轻微红色光晕，增强可读性 */
-}
+      font-size:clamp(22px,3.2vw,34px);
+      line-height:1.6;
+      color:var(--red);
+      margin-bottom:16px;
+      text-shadow:0 0 18px rgba(255,59,59,.25);
+      /* 标题强制用 Rubik Glitch（如果你想更明显） */
+      font-family:"Rubik Glitch","JetBrains Mono",monospace;
+    }
 
-.btn{
-  appearance:none;-webkit-appearance:none;background:transparent;border:none;border-radius:0;
-  color:var(--red);              /* 改为红色 */
-  padding:6px 2px;text-align:left;cursor:pointer;
-  font:inherit;font-size:clamp(18px,2.2vw,24px);line-height:1.5;
-  outline:none;transition:opacity .15s ease, transform .06s ease;
-  opacity:.96;display:block;text-shadow:0 0 8px rgba(255,59,59,.18);
-}
-.btn:hover{opacity:1;transform:translateY(-1px)}
-.btn:focus-visible{text-decoration:underline;text-underline-offset:3px}
-
+    .btn{
+      appearance:none;-webkit-appearance:none;background:transparent;border:none;border-radius:0;
+      color:var(--red);
+      padding:6px 2px;text-align:left;cursor:pointer;
+      font:inherit;font-size:clamp(18px,2.2vw,24px);line-height:1.5;
+      outline:none;transition:opacity .15s ease, transform .06s ease;
+      opacity:.96;display:block;text-shadow:0 0 8px rgba(255,59,59,.18);
+    }
+    .btn:hover{opacity:1;transform:translateY(-1px)}
+    .btn:focus-visible{text-decoration:underline;text-underline-offset:3px}
 
     .input{
       width:100%;background:transparent;color:#fff;border:none;
-      border-bottom:1px dashed rgba(255,80,80,.45);padding:8px 4px;outline:none;font-size:18px
+      border-bottom:1px dashed rgba(255,80,80,.45);padding:8px 4px;outline:none;font-size:18px;
+      /* 输入框也用 Rubik Glitch */
+      font-family:"Rubik Glitch","JetBrains Mono",monospace;
     }
 
     .progress{height:6px;width:100%;background:#171717;border-radius:999px;overflow:hidden;margin:0 0 8px}
@@ -196,7 +218,6 @@ const C1 = { id:'C1', text:'C1. 你最不想遇见',
 
 /* ---------- B 类题库（扩充到 B1–B6） ---------- */
 const B_QUESTIONS = [
-  /* B1 亲密关系焦虑 */
   { id:'B1', main:'B1. 在亲密关系里，你是否始终觉得缺了一点安全感？',
     supplements:[
       { id:'B1a', text:'B1a. 你最常记得你的伴侣身上的气味是', options:[
@@ -216,7 +237,6 @@ const B_QUESTIONS = [
       ]},
     ] },
 
-  /* B2 侵阈焦虑 */
   { id:'B2', main:'B2. 在生活里，你是否有时会觉得有些陌生的存在，正在悄悄靠近你？',
     supplements:[
       { id:'B2a', text:'B2a. 你更容易注意到哪种声音？', options:[
@@ -236,7 +256,6 @@ const B_QUESTIONS = [
       ]},
     ] },
 
-  /* B3 被监视的焦虑 */
   { id:'B3', main:'B3. 你是否会害怕有一双眼睛在你看不到的地方盯着你？',
     supplements:[
       { id:'B3a', text:'B3a. 你最常感觉被注视的地方是', options:[
@@ -256,7 +275,6 @@ const B_QUESTIONS = [
       ]},
     ] },
 
-  /* B4 媒介与科技恐惧 */
   { id:'B4', main:'B4. 科技正在入侵我们的生活。',
     supplements:[
       { id:'B4a', text:'B4a. 当你翻看照片时，你最害怕看见', options:[
@@ -276,7 +294,6 @@ const B_QUESTIONS = [
       ]},
     ] },
 
-  /* B5 集体失控与秩序瓦解 */
   { id:'B5', main:'B5. 你害怕那一天到来：街道依旧存在，但所有人都不再按常理行动。',
     supplements:[
       { id:'B5a', text:'B5a. 你最害怕看见', options:[
@@ -296,7 +313,6 @@ const B_QUESTIONS = [
       ]},
     ] },
 
-  /* B6 被替代的恐惧 */
   { id:'B6', main:'B6. 你是否害怕，有一天自己存在过的痕迹会消失？',
     supplements:[
       { id:'B6a', text:'B6a. 在朋友中，你最亮眼的优点是', options:[
@@ -540,7 +556,7 @@ function goDone(){
     const payload={ name:nameValue, answers, identityCount, anxietyCount, totalAsked };
     if(USE_LOCAL_STORAGE){ try{ localStorage.setItem('quizPayload', JSON.stringify(payload)); }catch(e){} }
     if(RESULT_URL && RESULT_URL.length>3){ window.location.href = RESULT_URL; }
-    else { alert('已收集到 13 题答案。\n提示：还没有设置结果页链接 RESULT_URL；数据已写入 localStorage(\"quizPayload\")。'); }
+    else { alert('已收集到 13 题答案。\n提示：还没有设置结果页链接 RESULT_URL；数据已写入 localStorage("quizPayload")。'); }
   });
   setBar();
 }
@@ -565,7 +581,7 @@ function renderOptions(list, cols){
   setBar();
 }
 
-/* D 题库：原有 8 条 + 兜底问题 */
+/* D 题库 */
 const D_QUESTIONS = [
   { id:'D1', text:'D1. 你更害怕哪一种门？', options:['打不开的门','自己打开的门','一直敲的门']},
   { id:'D2', text:'D2. 哪一种光最让你不安？', options:['闪烁灯管','手机微光','电梯顶灯']},
